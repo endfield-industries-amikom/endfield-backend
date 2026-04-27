@@ -1,0 +1,32 @@
+version: '3.7'
+
+networks:
+  endfield-network:
+
+services:
+  backend:
+    depends_on:
+      - postgres
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: endfield
+      DB_PASSWORD: endfield
+      DB_NAME: endfield
+    image: 'endfield-industries-amikom/endfield-backend:0.0.1'
+    networks:
+      - endfield-network
+    ports:
+      - 8080:3000
+
+  postgres:
+    environment:
+      POSTGRES_USER: endfield
+      POSTGRES_PASSWORD: endfield
+      POSTGRES_DB: endfield
+    image: docker.io/library/postgres:latest
+    networks:
+      - endfield-network
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
