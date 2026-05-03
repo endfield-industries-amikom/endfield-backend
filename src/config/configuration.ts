@@ -7,6 +7,7 @@ export default () => ({
     NAME: process.env.DB_NAME,
   },
   JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
   PORT: process.env.PORT,
   UI_URL: process.env.UI_URL,
 });

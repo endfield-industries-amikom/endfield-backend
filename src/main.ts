@@ -21,6 +21,17 @@ async function bootstrap() {
     const swagger = new DocumentBuilder()
       .setTitle('Endfield Backend')
       .setDescription('The Endfield Backend API')
+      .addBearerAuth(
+        {
+          name: 'Authorization',
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          in: 'header',
+        },
+        'bearer',
+      )
+      .addSecurityRequirements('bearer')
       .setVersion('1.0')
       .build();
     const documentFactory = () => SwaggerModule.createDocument(app, swagger);

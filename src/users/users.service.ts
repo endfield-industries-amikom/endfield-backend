@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RegisterUserDto, loginUserDto, DeleteUserDto } from './dtos/index';
+import { RegisterUserDto } from './dtos/index';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './users.entity';
 import { Repository } from 'typeorm';
@@ -12,48 +12,20 @@ export class UsersService {
     private readonly encryptionService: EncryptionService,
   ) {}
 
-  async register(userDto: RegisterUserDto) {
-    const user = new User();
-    user.email = userDto.email;
-    user.username = userDto.username;
-    user.password = await this.encryptionService.hashPassword(userDto.password);
-    await this.userRepository.save(user);
+  async create(userDto: RegisterUserDto) {
+    const user = await this.userRepository.save({ ...userDto });
     return user;
   }
 
-  async login(loginDto: loginUserDto) {
-    const user = await this.userRepository.findOne({
-      where: [{ email: loginDto.email }, { username: loginDto.username }],
-    });
-    if (
-      !user ||
-      !(await this.encryptionService.verifyPassword(
-        loginDto.password,
-        user.password,
-      ))
-    ) {
-      throw new Error('Invalid credentials');
-    }
-    return user;
+  async findUserById(userId: string) {
+    return this.userRepository.findOne({ where: { id: userId } });
   }
 
-  async deleteUser(deleteUserDto: DeleteUserDto) {
-    const user = await this.userRepository.findOne({
-      where: [
-        { email: deleteUserDto.email },
-        { username: deleteUserDto.username },
-      ],
-    });
-    if (
-      !user ||
-      !(await this.encryptionService.verifyPassword(
-        deleteUserDto.password,
-        user.password,
-      ))
-    ) {
-      throw new Error('Invalid credentials');
-    }
-    await this.userRepository.remove(user);
-    return user;
+  async findOne(username?: string, email?: string) {
+    return this.userRepository.findOne({ where: { username, email } });
+  }
+
+  async deleteUserById(userId: string): Promise<void> {
+    await this.userRepository.delete(userId);
   }
 }

@@ -1,17 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength } from 'class-validator';
 
-export class DeleteUserDto {
+export class RegisterUserDto {
+  @ApiProperty()
+  @IsEmail()
+  email: string;
+
   @ApiProperty()
   @IsString()
   @MinLength(3)
-  @IsOptional()
   username: string;
-
-  @ApiProperty()
-  @IsEmail()
-  @IsOptional()
-  email: string;
 
   @ApiProperty()
   @IsString()
