@@ -1,5 +1,3 @@
-version: '3.7'
-
 networks:
   endfield-network:
 
@@ -25,7 +23,7 @@ services:
       POSTGRES_USER: endfield
       POSTGRES_PASSWORD: endfield
       POSTGRES_DB: endfield
-    image: docker.io/library/postgres:latest
+    image: docker.io/library/postgres:17
     networks:
       - endfield-network
     volumes:

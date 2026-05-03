@@ -1,7 +1,7 @@
 import { Injectable, Res } from '@nestjs/common';
 
 @Injectable()
-export class ResponsesService {
+export class ResponsesService<T> {
   public _responseCodeStruct = {
     success: 200,
     created: 201,
@@ -23,7 +23,7 @@ export class ResponsesService {
     return this;
   }
 
-  sendResponse(@Res() res: any, data: any = []): this {
+  sendResponse(@Res() res: any, data: T | null): this {
     res
       .status(this._responseCode)
       .send({ statusCode: this._responseCode, message: this._message, data });

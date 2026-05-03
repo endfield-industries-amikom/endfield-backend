@@ -1,12 +1,12 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { AppService } from './app.service';
-import { ResponsesService } from './responses/responses.service';
+import { ResponsesService } from './utils/responses/responses.service';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly responsesService: ResponsesService,
+    private readonly responsesService: ResponsesService<null>,
   ) {}
 
   @Get()
@@ -14,6 +14,6 @@ export class AppController {
     this.responsesService
       .code('success')
       .message(this.appService.getHello())
-      .sendResponse(res);
+      .sendResponse(res, null);
   }
 }
