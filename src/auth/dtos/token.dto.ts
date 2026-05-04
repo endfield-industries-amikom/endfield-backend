@@ -1,5 +1,5 @@
 import { IsString } from 'class-validator';
-import { UserDto } from 'src/users/dtos';
+import { UserDto } from './user.dto';
 
 export class TokenDto {
   @IsString()

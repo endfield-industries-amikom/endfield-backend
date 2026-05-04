@@ -1,8 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/utils/encryption/encryption.service';
 import { JwtService } from '@nestjs/jwt';
-import { SignInDto, TokenDto } from './dtos';
+import { SignInDto, TokenDto, UserDto } from './dtos';
 import { RegisterUserDto } from './dtos/register.dto';
 import { User } from 'src/users/users.entity';
 
@@ -56,6 +60,19 @@ export class AuthService {
     }
 
     return this.generateToken(user);
+  }
+
+  async profile(userId: string): Promise<UserDto> {
+    const user = await this.usersService.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
   }
 
   async deleteUser(userId: string): Promise<void> {

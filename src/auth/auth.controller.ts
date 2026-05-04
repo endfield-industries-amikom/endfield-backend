@@ -7,20 +7,21 @@ import {
   Res,
   UseGuards,
   Logger,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignInDto } from './dtos/signIn.dto';
 import { ResponsesService } from 'src/utils/responses/responses.service';
-import { JwtDto, TokenDto } from './dtos';
+import { TokenDto, UserDto } from './dtos';
 import { RegisterUserDto } from './dtos/register.dto';
-import { AuthGuard } from './auth.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly responsesService: ResponsesService<TokenDto>,
+    private readonly responsesService: ResponsesService<TokenDto | UserDto>,
   ) {}
   private readonly logger = new Logger(AuthController.name);
 
@@ -42,12 +43,23 @@ export class AuthController {
       .sendResponse(res, signInResponse);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @Get('profile')
+  async getProfile(@Res() res: any, @Request() req: { user: UserDto }) {
+    const profile = await this.authService.profile(req.user.id ?? '');
+    return this.responsesService
+      .code('success')
+      .message('Profile retrieved successfully')
+      .sendResponse(res, profile);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   @Delete('delete')
-  async delete(@Res() res: any, @Request() req: JwtDto) {
-    this.logger.log('Deleting user', req.user);
-    await this.authService.deleteUser(req.user.sub ?? '');
+  async delete(@Res() res: any, @Request() req: { user: UserDto }) {
+    this.logger.log(`Deleting user ${req.user.id}`);
+    await this.authService.deleteUser(req.user.id ?? '');
     return this.responsesService
       .code('success')
       .message('Account deleted successfully')
