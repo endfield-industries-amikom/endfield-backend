@@ -1,5 +1,8 @@
 import {
+  BadRequestException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,9 +12,11 @@ import { JwtService } from '@nestjs/jwt';
 import { SignInDto, TokenDto, UserDto } from './dtos';
 import { RegisterUserDto } from './dtos/register.dto';
 import { User } from 'src/users/users.entity';
+import { isInstance } from 'class-validator';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly usersService: UsersService,
     private readonly encryptionService: EncryptionService,
@@ -37,11 +42,28 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterUserDto): Promise<TokenDto> {
-    const user = await this.usersService.create({
-      ...registerDto,
-      password: await this.encryptionService.hashPassword(registerDto.password),
-    });
-    return this.generateToken(user);
+    try {
+      const existingUser = await this.usersService.findOne(
+        registerDto.username,
+        registerDto.email,
+      );
+      if (existingUser) {
+        throw new BadRequestException('This Email is already in use');
+      }
+      const user = await this.usersService.create({
+        ...registerDto,
+        password: await this.encryptionService.hashPassword(
+          registerDto.password,
+        ),
+      });
+      return this.generateToken(user);
+    } catch (error) {
+      if (isInstance(error, BadRequestException)) {
+        throw error;
+      }
+      this.logger.error(error);
+      throw new InternalServerErrorException('Registration failed');
+    }
   }
 
   async signIn(signInDto: SignInDto): Promise<TokenDto> {
