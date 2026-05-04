@@ -50,6 +50,13 @@ async function bootstrap() {
   app.useLogger(logger);
   app.setGlobalPrefix('/api');
   app.enableShutdownHooks();
+  app.enableCors({
+    origin: process.env.NODE_ENV === 'development' ? '*' : process.env.UI_URL,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400,
+  });
 
   // Transform Pipe
   app.useGlobalPipes(
