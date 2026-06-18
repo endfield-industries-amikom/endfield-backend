@@ -18,6 +18,24 @@ services:
     ports:
       - 8080:3000
 
+  pgadmin:
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@endfield.com
+      PGADMIN_DEFAULT_PASSWORD: endfield
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: endfield
+      POSTGRES_PASSWORD: endfield
+      POSTGRES_DB: endfield
+      PGADMIN_CONFIG_SERVER_MODE: False
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: False
+    ports:
+      - 5050:80
+    networks:
+      - endfield-network
+
   postgres:
     environment:
       POSTGRES_USER: endfield
@@ -27,4 +45,4 @@ services:
     networks:
       - endfield-network
     volumes:
-      - ./db-data:/var/lib/postgresql/data
+      - ./db-data:/var/lib/postgresql/data:Z
