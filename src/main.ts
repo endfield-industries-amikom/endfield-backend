@@ -7,6 +7,9 @@ import {
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
+import fastifyCookie from '@fastify/cookie';
+import fastifySession from '@fastify/session';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('BackendService');
@@ -17,10 +20,47 @@ async function bootstrap() {
       bufferLogs: true,
     },
   );
+
+  // Register Fastify plugins
+  await app.register(fastifyCookie, {
+    secret:
+      process.env.COOKIE_SECRET ||
+      'default-cookie-secret-change-me-long-enough',
+    parseOptions: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      domain:
+        process.env.NODE_ENV === 'production'
+          ? 'endfield.cydlab.my.id'
+          : undefined,
+    },
+  });
+
+  await app.register(fastifySession, {
+    secret:
+      process.env.SESSION_SECRET ||
+      'default-session-secret-change-me-long-enough',
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      domain:
+        process.env.NODE_ENV === 'production'
+          ? 'endfield.cydlab.my.id'
+          : undefined,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
+    saveUninitialized: false,
+  });
+
+  // Swagger (development only)
   if (process.env.NODE_ENV === 'development') {
     const swagger = new DocumentBuilder()
       .setTitle('Endfield Backend')
-      .setDescription('The Endfield Backend API')
+      .setDescription(
+        'Inventory & Order Management System - Hybrid JWT + Session Auth',
+      )
       .addBearerAuth(
         {
           name: 'Authorization',
@@ -37,6 +77,8 @@ async function bootstrap() {
     const documentFactory = () => SwaggerModule.createDocument(app, swagger);
     SwaggerModule.setup('api/docs', app, documentFactory);
   }
+
+  // Security
   await app.register(fastifyHelmet, {
     contentSecurityPolicy: {
       directives: {
@@ -47,18 +89,14 @@ async function bootstrap() {
       },
     },
   });
-  app.useLogger(logger);
-  app.setGlobalPrefix('/api');
-  app.enableShutdownHooks();
-  app.enableCors({
-    origin: process.env.NODE_ENV === 'development' ? '*' : process.env.UI_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400,
-  });
 
-  // Transform Pipe
+  // Global prefix
+  app.setGlobalPrefix('/api/v1');
+
+  // Global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Global pipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -66,7 +104,25 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  logger.debug(`Listening on port ${process.env.PORT ?? 3001}`);
-  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
+
+  // Global guards
+  // JwtAuthGuard and RolesGuard are applied per-controller/endpoint via @UseGuards
+
+  app.useLogger(logger);
+  app.enableShutdownHooks();
+  app.enableCors({
+    origin:
+      process.env.NODE_ENV === 'development'
+        ? '*'
+        : ['https://endfield.cydlab.my.id', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400,
+  });
+
+  const port = process.env.PORT ?? 3001;
+  logger.debug(`Listening on port ${port}`);
+  await app.listen(port, '0.0.0.0');
 }
 void bootstrap();

@@ -1,22 +1,57 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ResponsesModule } from './utils/responses/responses.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { RolesModule } from './roles/roles.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import ormConfig from './config/orm.config';
 import ormConfigProd from './config/orm.config.prod';
 import configuration from './config/configuration';
 import { EncryptionModule } from './utils/encryption/encryption.module';
+import { RegionsModule } from './modules/region/regions.module';
+import { WarehousesModule } from './modules/warehouse/warehouses.module';
+import { ProductsModule } from './modules/product/products.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
+import { ForecastModule } from './modules/forecast/forecast.module';
+import { SupplierModule } from './modules/supplier/supplier.module';
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
+import { ShipmentModule } from './modules/shipment/shipment.module';
+import { CustomersModule } from './modules/customer/customers.module';
+import { SalesOrdersModule } from './modules/sales-order/sales-orders.module';
+import { SessionMiddleware } from './common/middlewares/session.middleware';
+import { AdminModule } from './admin/admin.module';
+import { APP_FILTER } from '@nestjs/core';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ResponsesModule,
     AuthModule,
     UsersModule,
+    RolesModule,
     EncryptionModule,
+    RegionsModule,
+    WarehousesModule,
+    ProductsModule,
+    InventoryModule,
+    StockMovementModule,
+    ForecastModule,
+    SupplierModule,
+    PurchaseOrderModule,
+    ShipmentModule,
+    CustomersModule,
+    SalesOrdersModule,
+    AdminModule,
     ConfigModule.forRoot({
       envFilePath: ['.env.development.local', '.env.production.local', '.env'],
       load: [configuration],
@@ -28,8 +63,26 @@ import { EncryptionModule } from './utils/encryption/encryption.module';
         process.env.NODE_ENV === 'production' ? ormConfigProd : ormConfig,
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(SessionMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}
