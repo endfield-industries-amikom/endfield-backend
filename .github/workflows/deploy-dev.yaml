@@ -1,0 +1,13 @@
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to development
+        runs: |
+          echo "Deploying to development"

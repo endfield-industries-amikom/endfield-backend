@@ -1,0 +1,16 @@
+networks:
+  endfield-network:
+
+services:
+  postgres:
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: endfield
+      POSTGRES_PASSWORD: endfield
+      POSTGRES_DB: endfield
+    image: docker.io/library/postgres:17
+    networks:
+      - endfield-network
+    volumes:
+      - ./db-data:/var/lib/postgresql/data:Z,U
