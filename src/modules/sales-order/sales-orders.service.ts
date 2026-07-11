@@ -1,36 +1,56 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { SalesOrder } from './sales-order.entity';
-import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
-import { OrderItemService } from '../order-item/order-item.service';
+import { Order } from '../../common/entities/order.entity';
+import { OrderItem } from '../order-item/order-item.entity';
 import { Item } from '../../common/entities/item.entity';
+import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
 
 @Injectable()
 export class SalesOrdersService {
   constructor(
     @InjectRepository(SalesOrder)
     private readonly salesOrderRepository: Repository<SalesOrder>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Item)
     private readonly itemRepository: Repository<Item>,
-    private readonly orderItemService: OrderItemService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(createSalesOrderDto: CreateSalesOrderDto) {
-    const { items, ...soData } = createSalesOrderDto;
-    const totalAmount = this.calculateTotalAmount(items ?? []);
-    const salesOrder = this.salesOrderRepository.create({ ...soData, totalAmount });
-    const savedSo = await this.salesOrderRepository.save(salesOrder);
+  async create(dto: CreateSalesOrderDto): Promise<SalesOrder> {
+    const { items, customerId, ...orderFields } = dto;
 
-    if (items && items.length > 0) {
-      const orderItems = items.map((item) => ({
-        ...item,
-        orderType: 'SALES',
-        orderId: savedSo.id,
-      }));
-      await this.orderItemService.createMany(orderItems);
-    }
-    return savedSo;
+    return this.dataSource.transaction(async (manager) => {
+      const totalAmount = this.calculateTotalAmount(items ?? []);
+      const order = manager.create(Order, { ...orderFields, totalAmount });
+      const savedOrder = await manager.save(order);
+
+      const so = manager.create(SalesOrder, {
+        orderId: savedOrder.id,
+        customerId,
+      });
+      await manager.save(so);
+
+      if (items && items.length > 0) {
+        const orderItems = items.map((item) =>
+          manager.create(OrderItem, {
+            ...item,
+            orderType: 'SALES',
+            orderId: savedOrder.id,
+          }),
+        );
+        await manager.save(orderItems);
+      }
+
+      return manager.findOneOrFail(SalesOrder, {
+        where: { orderId: savedOrder.id },
+        relations: ['order', 'customer'],
+      });
+    });
   }
 
   private calculateTotalAmount(
@@ -43,46 +63,53 @@ export class SalesOrdersService {
     const [data, total] = await this.salesOrderRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
-      order: { createdAt: 'DESC' },
-      relations: ['customer', 'warehouse'],
+      order: { order: { createdAt: 'DESC' } },
+      relations: ['order', 'customer'],
     });
     return { data, total, page, limit };
   }
 
-  async findOne(id: string) {
-    const salesOrder = await this.salesOrderRepository.findOne({
-      where: { id },
-      relations: ['customer', 'warehouse'],
+  async findOne(orderId: string) {
+    const so = await this.salesOrderRepository.findOne({
+      where: { orderId },
+      relations: ['order', 'customer'],
     });
-    if (!salesOrder) throw new NotFoundException('Sales order not found');
-    return salesOrder;
+    if (!so) throw new NotFoundException('Sales order not found');
+    return so;
   }
 
-  async update(id: string, updateSalesOrderDto: UpdateSalesOrderDto) {
-    const salesOrder = await this.findOne(id);
-    Object.assign(salesOrder, updateSalesOrderDto);
-    return this.salesOrderRepository.save(salesOrder);
+  async update(orderId: string, dto: UpdateSalesOrderDto) {
+    const so = await this.findOne(orderId);
+    const { customerId, ...orderFields } = dto as any;
+    if (Object.keys(orderFields).length > 0) {
+      await this.orderRepository.update(so.orderId, orderFields);
+    }
+    if (customerId !== undefined) {
+      so.customerId = customerId;
+      await this.salesOrderRepository.save(so);
+    }
+    return this.findOne(orderId);
   }
 
   async ship(orderId: string) {
-    const salesOrder = await this.findOne(orderId);
-    if (salesOrder.status === 'SHIPPED') return salesOrder;
-    salesOrder.status = 'SHIPPED';
-    const savedSo = await this.salesOrderRepository.save(salesOrder);
+    const so = await this.findOne(orderId);
+    if (so.order.status === 'SHIPPED') return so;
+    await this.orderRepository.update(so.orderId, { status: 'SHIPPED' });
 
-    const orderItems = await this.orderItemService.findByOrderId('SALES', orderId);
+    const orderItems = await this.orderItemRepository.find({
+      where: { orderId, orderType: 'SALES' },
+    });
     for (const oi of orderItems) {
-      await this.itemRepository.increment(
-        { id: oi.itemId },
-        'soldQty',
-        oi.quantity,
-      );
+      await this.itemRepository.increment({ id: oi.itemId }, 'soldQty', oi.quantity);
     }
-    return savedSo;
+    return this.findOne(orderId);
   }
 
-  async remove(id: string) {
-    const result = await this.salesOrderRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Sales order not found');
+  async remove(orderId: string) {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(OrderItem, { orderId });
+      await manager.delete(SalesOrder, { orderId });
+      await manager.delete(Order, { id: orderId });
+    });
   }
 }

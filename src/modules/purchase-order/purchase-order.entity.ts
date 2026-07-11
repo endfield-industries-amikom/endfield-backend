@@ -3,15 +3,20 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  OneToOne,
+  PrimaryColumn,
 } from 'typeorm';
 import { Order } from '../../common/entities/order.entity';
 import { Supplier } from '../supplier/supplier.entity';
 
 @Entity('PURCHASE_ORDER')
-export class PurchaseOrder extends Order {
-  @PrimaryGeneratedColumn('uuid', { name: 'po_id' })
-  declare id: string;
+export class PurchaseOrder {
+  @PrimaryColumn({ name: 'order_id' })
+  orderId: string;
+
+  @OneToOne(() => Order)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 
   @Column({ name: 'supplier_id' })
   supplierId: string;

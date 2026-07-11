@@ -84,27 +84,34 @@ export class ShipmentService {
 
   private async handlePurchaseArrival(shipment: Shipment): Promise<void> {
     const po = await this.purchaseOrderRepository.findOne({
-      where: { id: shipment.orderId },
+      where: { orderId: shipment.orderId },
+      relations: ['order'],
     });
     if (!po) return;
+
     const inventories = await this.inventoryRepository.find({
-      where: { warehouseId: po.warehouseId },
+      where: { warehouseId: po.order.warehouseId },
     });
     for (const inv of inventories) {
       inv.quantityOnHand += 10;
       await this.inventoryRepository.save(inv);
       this.logger.log(`Restocked inventory ${inv.id} with +10 units`);
     }
-    await this.productionSimulationService.executeForWarehouse(po.warehouseId);
+    await this.productionSimulationService.executeForWarehouse(po.order.warehouseId);
   }
 
   private async handleSalesArrival(shipment: Shipment): Promise<void> {
-    const salesOrder = await this.salesOrderRepository.findOne({
-      where: { id: shipment.orderId },
+    const so = await this.salesOrderRepository.findOne({
+      where: { orderId: shipment.orderId },
+      relations: ['order'],
     });
-    if (!salesOrder || salesOrder.status === 'SHIPPED') return;
-    salesOrder.status = 'SHIPPED';
-    await this.salesOrderRepository.save(salesOrder);
+    if (!so || so.order.status === 'SHIPPED') return;
+
+    await this.salesOrderRepository.manager.update(
+      'ORDER',
+      { id: shipment.orderId },
+      { status: 'SHIPPED' },
+    );
     this.logger.log(`Sales order ${shipment.orderId} marked as SHIPPED`);
 
     const orderItems = await this.orderItemRepository.find({

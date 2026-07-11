@@ -743,8 +743,8 @@ describe('Endfield Backend (e2e)', () => {
         })
         .expect(201);
 
-      expect(res.body.data.status).toBe('PENDING');
-      purchaseOrderId = res.body.data.id;
+      expect(res.body.data.order.status).toBe('PENDING');
+      purchaseOrderId = res.body.data.orderId;
     });
 
     it('GET /purchase-order — list', async () => {
@@ -769,7 +769,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .expect(200);
 
-      expect(res.body.data.status).toBe('APPROVED');
+      expect(res.body.data.order.status).toBe('APPROVED');
     });
 
     it('PATCH /purchase-order/:id — update', async () => {
@@ -846,8 +846,8 @@ describe('Endfield Backend (e2e)', () => {
         })
         .expect(201);
 
-      expect(res.body.data.status).toBe('PENDING');
-      salesOrderId = res.body.data.id;
+      expect(res.body.data.order.status).toBe('PENDING');
+      salesOrderId = res.body.data.orderId;
     });
 
     it('GET /sales-order — list', async () => {

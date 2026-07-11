@@ -1,16 +1,13 @@
 import {
   Column,
   CreateDateColumn,
+  Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
-/**
- * Abstract base entity for all order types (purchase and sales).
- * Not decorated with @Entity — meant to be extended by concrete entities
- * that define their own table mapping and PK column name.
- */
-export abstract class Order {
+@Entity('ORDER')
+export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
