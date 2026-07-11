@@ -9,6 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -20,18 +21,22 @@ import { ResponsesService } from 'src/utils/responses/responses.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'products');
-
 @ApiTags('Upload')
 @Controller()
 export class UploadController {
   private readonly logger = new Logger(UploadController.name);
+  private readonly uploadDir: string;
 
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     private readonly responsesService: ResponsesService<any>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.uploadDir = path.resolve(
+      this.configService.get<string>('UPLOAD_DIR', './images'),
+    );
+  }
 
   @Post('product/:id/image')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,17 +73,18 @@ export class UploadController {
       };
       const ext = mimeToExt[data.mimetype] || '.jpg';
 
-      if (!fs.existsSync(UPLOAD_DIR)) {
-        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+        this.logger.log(`Created upload directory: ${this.uploadDir}`);
       }
 
       // Delete old image file if it exists
       if (product.imageUri) {
-        if (fs.existsSync(UPLOAD_DIR)) {
-          const files = fs.readdirSync(UPLOAD_DIR);
+        if (fs.existsSync(this.uploadDir)) {
+          const files = fs.readdirSync(this.uploadDir);
           for (const file of files) {
             if (file.startsWith(id)) {
-              fs.unlinkSync(path.join(UPLOAD_DIR, file));
+              fs.unlinkSync(path.join(this.uploadDir, file));
               this.logger.log(`Deleted old image: ${file}`);
             }
           }
@@ -86,7 +92,7 @@ export class UploadController {
       }
 
       const filename = `${id}${ext}`;
-      const filePath = path.join(UPLOAD_DIR, filename);
+      const filePath = path.join(this.uploadDir, filename);
       const writeStream = fs.createWriteStream(filePath);
       await data.file.pipe(writeStream);
 
@@ -130,18 +136,18 @@ export class UploadController {
         throw new NotFoundException('Image not found');
       }
 
-      if (!fs.existsSync(UPLOAD_DIR)) {
+      if (!fs.existsSync(this.uploadDir)) {
         throw new NotFoundException('Image not found');
       }
 
-      const files = fs.readdirSync(UPLOAD_DIR);
+      const files = fs.readdirSync(this.uploadDir);
       const imageFile = files.find((f) => f.startsWith(id));
 
       if (!imageFile) {
         throw new NotFoundException('Image not found');
       }
 
-      const filePath = path.join(UPLOAD_DIR, imageFile);
+      const filePath = path.join(this.uploadDir, imageFile);
       const ext = path.extname(imageFile).toLowerCase();
 
       const mimeTypes: Record<string, string> = {
