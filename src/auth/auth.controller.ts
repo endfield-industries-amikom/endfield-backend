@@ -18,7 +18,7 @@ import { ResponsesService } from 'src/utils/responses/responses.service';
 import { TokenDto, UserDto } from './dtos';
 import { RegisterUserDto } from './dtos/register.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
