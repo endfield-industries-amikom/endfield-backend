@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -40,6 +41,21 @@ export abstract class CreateItemDto {
     { message: 'unitPrice must be a valid decimal number with up to 2 decimal places' },
   )
   unitPrice: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isSellable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isPurchaseable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isManufactureable?: boolean;
 }
 
 /**
@@ -78,4 +94,19 @@ export abstract class UpdateItemDto {
     { message: 'unitPrice must be a valid decimal number with up to 2 decimal places' },
   )
   unitPrice?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isSellable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isPurchaseable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isManufactureable?: boolean;
 }

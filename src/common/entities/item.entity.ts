@@ -29,6 +29,15 @@ export abstract class Item {
   @Column({ type: 'decimal', precision: 10, scale: 2, name: 'unit_price' })
   unitPrice: number;
 
+  @Column({ name: 'is_sellable', default: false })
+  isSellable: boolean;
+
+  @Column({ name: 'is_purchaseable', default: false })
+  isPurchaseable: boolean;
+
+  @Column({ name: 'is_manufactureable', default: false })
+  isManufactureable: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

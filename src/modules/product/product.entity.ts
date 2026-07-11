@@ -23,4 +23,10 @@ export class Product extends Item {
 
   @Column({ name: 'sold_qty', default: 0 })
   soldQty: number;
+
+  @Column({ name: 'is_sellable', default: true })
+  declare isSellable: boolean;
+
+  @Column({ name: 'is_manufactureable', default: true })
+  declare isManufactureable: boolean;
 }

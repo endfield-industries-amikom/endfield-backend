@@ -8,4 +8,10 @@ export class Material extends Item {
 
   @Column({ length: 50, nullable: true })
   unit: string;
+
+  @Column({ name: 'is_purchaseable', default: true })
+  declare isPurchaseable: boolean;
+
+  @Column({ name: 'is_sellable', default: true })
+  declare isSellable: boolean;
 }
