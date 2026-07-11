@@ -10,6 +10,7 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { seed } from './database/seed';
 
 async function bootstrap() {
   const logger = new Logger('BackendService');
@@ -122,7 +123,35 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3001;
-  logger.debug(`Listening on port ${port}`);
+
+  // Seed the database before accepting traffic.
+  // Retry a few times — the DB container may still be starting.
+  await seedDatabase(logger);
+
   await app.listen(port, '0.0.0.0');
+  logger.log(`🚀 Backend listening on port ${port}`);
 }
+
+async function seedDatabase(logger: Logger) {
+  const maxRetries = 5;
+  const delayMs = 3000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await seed();
+      logger.log('✅ Database seeded successfully');
+      return;
+    } catch (error) {
+      logger.warn(
+        `⚠️  Seed attempt ${attempt}/${maxRetries} failed: ${(error as Error).message}`,
+      );
+      if (attempt === maxRetries) {
+        logger.error('❌ All seed attempts exhausted — starting without seed');
+        return;
+      }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+}
+
 void bootstrap();

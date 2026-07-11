@@ -11,7 +11,7 @@ dotenv.config({
   path: path.resolve(__dirname, '../../.env.development.local'),
 });
 
-async function seed() {
+export async function seed() {
   console.log('🌱 Starting database seed...');
 
   const dataSource = new DataSource({
@@ -107,7 +107,3 @@ async function seed() {
     await dataSource.destroy();
   }
 }
-
-seed()
-  .then(() => process.exit(0))
-  .catch(() => process.exit(1));
