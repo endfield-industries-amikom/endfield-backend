@@ -42,5 +42,5 @@ export class CreateProductionSchematicDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  outputProductId: string;
+  outputItemId: string;
 }

@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Product } from 'src/modules/product/product.entity';
+import { Item } from '../../common/entities/item.entity';
 
 @Entity('PRODUCTION_SCHEMATIC')
 export class ProductionSchematic {
@@ -40,12 +40,12 @@ export class ProductionSchematic {
   outputQty: number;
 
   @ApiProperty()
-  @Column({ name: 'output_product_id' })
-  outputProductId: string;
+  @Column({ name: 'output_item_id' })
+  outputItemId: string;
 
-  @ManyToOne(() => Product)
-  @JoinColumn({ name: 'output_product_id' })
-  outputProduct: Product;
+  @ManyToOne(() => Item)
+  @JoinColumn({ name: 'output_item_id' })
+  outputItem: Item;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,17 +1,24 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Item } from '../../common/entities/item.entity';
 
 @Entity('MATERIAL')
-export class Material extends Item {
+export class Material {
   @PrimaryGeneratedColumn('uuid', { name: 'material_id' })
-  declare id: string;
+  id: string;
+
+  @Column({ name: 'item_id' })
+  itemId: string;
+
+  @OneToOne(() => Item)
+  @JoinColumn({ name: 'item_id' })
+  item: Item;
 
   @Column({ length: 50, nullable: true })
   unit: string;
-
-  @Column({ name: 'is_purchaseable', default: true })
-  declare isPurchaseable: boolean;
-
-  @Column({ name: 'is_sellable', default: true })
-  declare isSellable: boolean;
 }

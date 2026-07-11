@@ -4,21 +4,20 @@ import { Repository } from 'typeorm';
 import { SalesOrder } from './sales-order.entity';
 import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
 import { OrderItemService } from '../order-item/order-item.service';
-import { Product } from '../product/product.entity';
+import { Item } from '../../common/entities/item.entity';
 
 @Injectable()
 export class SalesOrdersService {
   constructor(
     @InjectRepository(SalesOrder)
     private readonly salesOrderRepository: Repository<SalesOrder>,
-    @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
     private readonly orderItemService: OrderItemService,
   ) {}
 
   async create(createSalesOrderDto: CreateSalesOrderDto) {
     const { items, ...soData } = createSalesOrderDto;
-
     const totalAmount = this.calculateTotalAmount(items ?? []);
     const salesOrder = this.salesOrderRepository.create({ ...soData, totalAmount });
     const savedSo = await this.salesOrderRepository.save(salesOrder);
@@ -31,7 +30,6 @@ export class SalesOrdersService {
       }));
       await this.orderItemService.createMany(orderItems);
     }
-
     return savedSo;
   }
 
@@ -56,9 +54,7 @@ export class SalesOrdersService {
       where: { id },
       relations: ['customer', 'warehouse'],
     });
-    if (!salesOrder) {
-      throw new NotFoundException('Sales order not found');
-    }
+    if (!salesOrder) throw new NotFoundException('Sales order not found');
     return salesOrder;
   }
 
@@ -70,32 +66,23 @@ export class SalesOrdersService {
 
   async ship(orderId: string) {
     const salesOrder = await this.findOne(orderId);
-    if (salesOrder.status === 'SHIPPED') {
-      return salesOrder;
-    }
+    if (salesOrder.status === 'SHIPPED') return salesOrder;
     salesOrder.status = 'SHIPPED';
     const savedSo = await this.salesOrderRepository.save(salesOrder);
 
-    // Increment soldQty on each product in the order items
-    const orderItems = await this.orderItemService.findByOrderId(
-      'SALES',
-      orderId,
-    );
-    for (const item of orderItems) {
-      await this.productRepository.increment(
-        { id: item.productId },
+    const orderItems = await this.orderItemService.findByOrderId('SALES', orderId);
+    for (const oi of orderItems) {
+      await this.itemRepository.increment(
+        { id: oi.itemId },
         'soldQty',
-        item.quantity,
+        oi.quantity,
       );
     }
-
     return savedSo;
   }
 
   async remove(id: string) {
     const result = await this.salesOrderRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Sales order not found');
-    }
+    if (result.affected === 0) throw new NotFoundException('Sales order not found');
   }
 }

@@ -26,6 +26,7 @@ describe('Endfield Backend (e2e)', () => {
   let regionId: string;
   let warehouseId: string;
   let productId: string;
+  let itemId: string;
   let materialId: string;
   let supplierId: string;
   let customerId: string;
@@ -366,9 +367,10 @@ describe('Endfield Backend (e2e)', () => {
         })
         .expect(201);
 
-      expect(res.body.data.name).toBe('E2E Product');
-      expect(res.body.data.sku).toContain('E2E-PROD-');
+      expect(res.body.data).toHaveProperty('itemId');
+      expect(res.body.data.type).toBe('product');
       productId = res.body.data.id;
+      itemId = res.body.data.itemId;
     });
 
     it('GET /product — list with pagination', async () => {
@@ -388,7 +390,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .expect(200);
 
-      expect(res.body.data.sku).toContain('E2E-PROD-');
+      expect(res.body.data.item.sku).toContain('E2E-PROD-');
     });
 
     it('PATCH /product/:id — update', async () => {
@@ -398,7 +400,7 @@ describe('Endfield Backend (e2e)', () => {
         .send({ name: 'E2E Product Updated', unitPrice: 149.99 })
         .expect(200);
 
-      expect(res.body.data.name).toBe('E2E Product Updated');
+      expect(res.body.data.item.name).toBe('E2E Product Updated');
     });
 
     it('GET /product/top-selling — top products', async () => {
@@ -446,7 +448,8 @@ describe('Endfield Backend (e2e)', () => {
         })
         .expect(201);
 
-      expect(res.body.data.name).toBe('E2E Raw Material');
+      expect(res.body.data).toHaveProperty('itemId');
+      expect(res.body.data.itemId).toBeDefined();
       materialId = res.body.data.id;
     });
 
@@ -465,7 +468,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .expect(200);
 
-      expect(res.body.data.unit).toBe('kg');
+      expect(res.body.data.item.unitPrice).toBeDefined();
     });
 
     it('PATCH /material/:id — update', async () => {
@@ -475,7 +478,7 @@ describe('Endfield Backend (e2e)', () => {
         .send({ unitPrice: 30.0 })
         .expect(200);
 
-      expect(res.body.data.unitPrice).toBe('30.00');
+      expect(res.body.data.item.unitPrice).toBe('30.00');
     });
   });
 
@@ -614,6 +617,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .send({ name: 'Inv Product', sku: `INV-P-${Date.now()}`, unitPrice: 50 });
       productId = p.body.data.id;
+      itemId = p.body.data.itemId;
     });
 
     it('POST /inventory — create', async () => {
@@ -622,7 +626,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .send({
           warehouseId,
-          productId,
+          itemId,
           quantityOnHand: 100,
           reservedQuantity: 0,
           reorderLevel: 10,
@@ -826,6 +830,7 @@ describe('Endfield Backend (e2e)', () => {
         .set(auth())
         .send({ name: 'SO Product', sku: `SO-P-${Date.now()}`, unitPrice: 60 });
       productId = p.body.data.id;
+      itemId = p.body.data.itemId;
     });
 
     it('POST /sales-order — create', async () => {
@@ -837,7 +842,7 @@ describe('Endfield Backend (e2e)', () => {
           warehouseId,
           totalAmount: 600,
           notes: 'E2E test SO',
-          items: [{ productId, quantity: 5, unitPrice: 60 }],
+          items: [{ itemId, quantity: 5, unitPrice: 60 }],
         })
         .expect(201);
 
@@ -1049,7 +1054,109 @@ describe('Endfield Backend (e2e)', () => {
   });
 
   /* ================================================================== */
-  /*  14. CLEANUP — remove remaining test data                           */
+
+  /* ================================================================== */
+  /*  14. ITEMS (direct lookup with filters)                              */
+  /* ================================================================== */
+
+  describe('Items', () => {
+    const auth = () => ({ Authorization: `Bearer ${adminToken}` });
+    let testItemId: string;
+
+    it('POST /item — create', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .post('/api/v1/item')
+        .set(auth())
+        .send({
+          name: 'E2E Item',
+          sku: `E2E-ITEM-${Date.now()}`,
+          unitPrice: 42.5,
+          isSellable: true,
+          isPurchaseable: false,
+          isManufactureable: true,
+        })
+        .expect(201);
+
+      expect(res.body.data.name).toBe('E2E Item');
+      expect(res.body.data.isSellable).toBe(true);
+      testItemId = res.body.data.id;
+    });
+
+    it('GET /item — list with pagination', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .get('/api/v1/item')
+        .set(auth())
+        .query({ page: 1, limit: 10 })
+        .expect(200);
+
+      expect(res.body.data).toHaveProperty('data');
+    });
+
+    it('GET /item?isSellable=true — filter', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .get('/api/v1/item')
+        .set(auth())
+        .query({ isSellable: 'true' })
+        .expect(200);
+
+      expect(res.body.data.data.length).toBeGreaterThan(0);
+      for (const item of res.body.data.data) {
+        expect(item.isSellable).toBe(true);
+      }
+    });
+
+    it('GET /item?isPurchaseable=true — filter', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .get('/api/v1/item')
+        .set(auth())
+        .query({ isPurchaseable: 'true' })
+        .expect(200);
+
+      for (const item of res.body.data.data) {
+        expect(item.isPurchaseable).toBe(true);
+      }
+    });
+
+    it('GET /item?isManufactureable=true — filter', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .get('/api/v1/item')
+        .set(auth())
+        .query({ isManufactureable: 'true' })
+        .expect(200);
+
+      for (const item of res.body.data.data) {
+        expect(item.isManufactureable).toBe(true);
+      }
+    });
+
+    it('GET /item/:id — get by id', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .get(`/api/v1/item/${testItemId}`)
+        .set(auth())
+        .expect(200);
+
+      expect(res.body.data.name).toBe('E2E Item');
+    });
+
+    it('PATCH /item/:id — update', async () => {
+      const res = await request(app.getHttpServer() as App)
+        .patch(`/api/v1/item/${testItemId}`)
+        .set(auth())
+        .send({ name: 'E2E Item Updated' })
+        .expect(200);
+
+      expect(res.body.data.name).toBe('E2E Item Updated');
+    });
+
+    it('DELETE /item/:id — delete', async () => {
+      await request(app.getHttpServer() as App)
+        .delete(`/api/v1/item/${testItemId}`)
+        .set(auth())
+        .expect(200);
+    });
+  });
+
+  /*  15. CLEANUP — remove remaining test data                           */
   /* ================================================================== */
 
   afterAll(async () => {

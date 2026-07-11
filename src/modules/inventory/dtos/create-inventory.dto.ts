@@ -8,7 +8,7 @@ export class CreateInventoryDto {
 
   @ApiProperty()
   @IsUUID()
-  productId: string;
+  itemId: string;
 
   @ApiProperty({ required: false, default: 0 })
   @IsOptional()

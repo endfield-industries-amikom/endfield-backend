@@ -17,8 +17,8 @@ export class Inventory {
   warehouseId: string;
 
   @ApiProperty()
-  @Column({ name: 'product_id' })
-  productId: string;
+  @Column({ name: 'item_id' })
+  itemId: string;
 
   @ApiProperty()
   @Column({ name: 'quantity_on_hand', default: 0 })

@@ -1,10 +1,23 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Item } from '../../common/entities/item.entity';
 
 @Entity('PRODUCT')
-export class Product extends Item {
+export class Product {
   @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
-  declare id: string;
+  id: string;
+
+  @Column({ name: 'item_id' })
+  itemId: string;
+
+  @OneToOne(() => Item)
+  @JoinColumn({ name: 'item_id' })
+  item: Item;
 
   @Column({ length: 50, default: 'product' })
   type: string;
@@ -17,16 +30,4 @@ export class Product extends Item {
     default: 1,
   })
   capacityUsage: number;
-
-  @Column({ name: 'image_uri', nullable: true })
-  imageUri: string;
-
-  @Column({ name: 'sold_qty', default: 0 })
-  soldQty: number;
-
-  @Column({ name: 'is_sellable', default: true })
-  declare isSellable: boolean;
-
-  @Column({ name: 'is_manufactureable', default: true })
-  declare isManufactureable: boolean;
 }

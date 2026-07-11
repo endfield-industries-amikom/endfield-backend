@@ -16,14 +16,4 @@ export class UpdateProductDto extends UpdateItemDto {
     { message: 'capacityUsage must be a valid decimal number with up to 2 decimal places' },
   )
   capacityUsage?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  imageUri?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  soldQty?: number;
 }

@@ -32,6 +32,7 @@ import { ProductionSimulationModule } from './modules/production-simulation/prod
 import { UploadModule } from './modules/upload/upload.module';
 import { MaterialsModule } from './modules/material/materials.module';
 import { OrderItemModule } from './modules/order-item/order-item.module';
+import { ItemsModule } from './modules/item/items.module';
 import { SessionMiddleware } from './common/middlewares/session.middleware';
 import { AdminModule } from './admin/admin.module';
 import { APP_FILTER } from '@nestjs/core';
@@ -61,6 +62,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     UploadModule,
     MaterialsModule,
     OrderItemModule,
+    ItemsModule,
     AdminModule,
     ConfigModule.forRoot({
       envFilePath: ['.env.development.local', '.env.production.local', '.env'],

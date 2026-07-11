@@ -16,7 +16,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Product } from '../product/product.entity';
+import { Item } from '../../common/entities/item.entity';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -28,8 +28,8 @@ export class UploadController {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
     private readonly responsesService: ResponsesService<any>,
     private readonly configService: ConfigService,
   ) {
@@ -48,15 +48,10 @@ export class UploadController {
     @Res() res: any,
   ) {
     try {
-      const product = await this.productRepository.findOne({
-        where: { id },
-      });
-      if (!product) {
-        throw new NotFoundException('Product not found');
-      }
+      const item = await this.itemRepository.findOne({ where: { id } });
+      if (!item) throw new NotFoundException('Item not found');
 
       const data = await req.file();
-
       if (!data) {
         return this.responsesService
           .code('badRequest')
@@ -78,8 +73,7 @@ export class UploadController {
         this.logger.log(`Created upload directory: ${this.uploadDir}`);
       }
 
-      // Delete old image file if it exists
-      if (product.imageUri) {
+      if (item.imageUri) {
         if (fs.existsSync(this.uploadDir)) {
           const files = fs.readdirSync(this.uploadDir);
           for (const file of files) {
@@ -95,16 +89,14 @@ export class UploadController {
       const filePath = path.join(this.uploadDir, filename);
       const writeStream = fs.createWriteStream(filePath);
       await data.file.pipe(writeStream);
-
       await new Promise<void>((resolve, reject) => {
         writeStream.on('finish', resolve);
         writeStream.on('error', reject);
       });
 
       const imageUri = `/api/v1/image/${id}`;
-      await this.productRepository.update(id, { imageUri });
-
-      this.logger.log(`Image uploaded for product ${id}: ${filename}`);
+      await this.itemRepository.update(id, { imageUri });
+      this.logger.log(`Image uploaded for item ${id}: ${filename}`);
 
       return this.responsesService
         .code('created')
@@ -128,54 +120,31 @@ export class UploadController {
   @Get('image/:id')
   async getImage(@Param('id') id: string, @Res() res: any) {
     try {
-      const product = await this.productRepository.findOne({
-        where: { id },
-      });
-
-      if (!product || !product.imageUri) {
-        throw new NotFoundException('Image not found');
-      }
-
-      if (!fs.existsSync(this.uploadDir)) {
-        throw new NotFoundException('Image not found');
-      }
+      const item = await this.itemRepository.findOne({ where: { id } });
+      if (!item || !item.imageUri) throw new NotFoundException('Image not found');
+      if (!fs.existsSync(this.uploadDir)) throw new NotFoundException('Image not found');
 
       const files = fs.readdirSync(this.uploadDir);
       const imageFile = files.find((f) => f.startsWith(id));
-
-      if (!imageFile) {
-        throw new NotFoundException('Image not found');
-      }
+      if (!imageFile) throw new NotFoundException('Image not found');
 
       const filePath = path.join(this.uploadDir, imageFile);
       const ext = path.extname(imageFile).toLowerCase();
-
       const mimeTypes: Record<string, string> = {
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.gif': 'image/gif',
-        '.webp': 'image/webp',
-        '.bmp': 'image/bmp',
+        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.png': 'image/png', '.gif': 'image/gif',
+        '.webp': 'image/webp', '.bmp': 'image/bmp',
       };
-
       const contentType = mimeTypes[ext] || 'image/jpeg';
       const stream = fs.createReadStream(filePath);
       res.header('Content-Type', contentType);
       res.header('Cache-Control', 'public, max-age=86400');
-
       return res.send(stream);
     } catch (error) {
       if (error instanceof NotFoundException) {
-        return this.responsesService
-          .code('notFound')
-          .message(error.message)
-          .sendResponse(res, null);
+        return this.responsesService.code('notFound').message(error.message).sendResponse(res, null);
       }
-      return this.responsesService
-        .code('internalServerError')
-        .message('Failed to retrieve image')
-        .sendResponse(res, null);
+      return this.responsesService.code('internalServerError').message('Failed to retrieve image').sendResponse(res, null);
     }
   }
 }

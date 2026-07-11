@@ -9,17 +9,12 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { Inventory } from '../inventory/inventory.entity';
 import { ProductionSimulationModule } from '../production-simulation/production-simulation.module';
 import { OrderItem } from '../order-item/order-item.entity';
-import { Product } from '../product/product.entity';
+import { Item } from '../../common/entities/item.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Shipment,
-      SalesOrder,
-      PurchaseOrder,
-      Inventory,
-      OrderItem,
-      Product,
+      Shipment, SalesOrder, PurchaseOrder, Inventory, OrderItem, Item,
     ]),
     InventoryModule,
     ProductionSimulationModule,

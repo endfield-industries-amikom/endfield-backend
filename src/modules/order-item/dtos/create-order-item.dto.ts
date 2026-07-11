@@ -12,7 +12,7 @@ export class CreateOrderItemDto {
 
   @ApiProperty()
   @IsString()
-  productId: string;
+  itemId: string;
 
   @ApiProperty()
   @IsNumber()

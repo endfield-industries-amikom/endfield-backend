@@ -1,16 +1,13 @@
 import {
   Column,
   CreateDateColumn,
+  Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
-/**
- * Abstract base entity for all stockable items (products and raw materials).
- * Not decorated with @Entity — meant to be extended by concrete entities
- * that define their own table mapping and PK column name.
- */
-export abstract class Item {
+@Entity('ITEM')
+export class Item {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -37,6 +34,12 @@ export abstract class Item {
 
   @Column({ name: 'is_manufactureable', default: false })
   isManufactureable: boolean;
+
+  @Column({ name: 'image_uri', nullable: true })
+  imageUri: string;
+
+  @Column({ name: 'sold_qty', default: 0 })
+  soldQty: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

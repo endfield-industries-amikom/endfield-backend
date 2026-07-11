@@ -21,26 +21,16 @@ export class ProductionSchematicService {
     private readonly inventoryRepository: Repository<Inventory>,
   ) {}
 
-  async create(
-    createDto: CreateProductionSchematicDto,
-  ): Promise<ProductionSchematic> {
-    const schematic = this.schematicRepository.create(createDto);
+  async create(dto: CreateProductionSchematicDto): Promise<ProductionSchematic> {
+    const schematic = this.schematicRepository.create(dto);
     return this.schematicRepository.save(schematic);
   }
 
-  async findAll(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: ProductionSchematic[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async findAll(page: number = 1, limit: number = 10) {
     const [data, total] = await this.schematicRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
-      relations: ['outputProduct'],
+      relations: ['outputItem'],
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
@@ -49,92 +39,66 @@ export class ProductionSchematicService {
   async findOne(id: string): Promise<ProductionSchematic> {
     const schematic = await this.schematicRepository.findOne({
       where: { id },
-      relations: ['outputProduct'],
+      relations: ['outputItem'],
     });
-    if (!schematic) {
-      throw new NotFoundException('Production schematic not found');
-    }
+    if (!schematic) throw new NotFoundException('Production schematic not found');
     return schematic;
   }
 
-  async update(
-    id: string,
-    updateDto: UpdateProductionSchematicDto,
-  ): Promise<ProductionSchematic> {
+  async update(id: string, dto: UpdateProductionSchematicDto): Promise<ProductionSchematic> {
     const schematic = await this.findOne(id);
-    Object.assign(schematic, updateDto);
+    Object.assign(schematic, dto);
     return this.schematicRepository.save(schematic);
   }
 
   async remove(id: string): Promise<void> {
     const result = await this.schematicRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Production schematic not found');
-    }
+    if (result.affected === 0) throw new NotFoundException('Production schematic not found');
   }
 
   async produce(id: string): Promise<ProductionSchematic> {
     const schematic = await this.schematicRepository.findOne({
       where: { id },
-      relations: ['outputProduct'],
+      relations: ['outputItem'],
     });
-    if (!schematic) {
-      throw new NotFoundException('Production schematic not found');
-    }
+    if (!schematic) throw new NotFoundException('Production schematic not found');
 
     const inputs: string[] = schematic.inputs ?? [];
     const inputQty: number[] = schematic.inputQty ?? [];
 
     if (inputs.length === 0) {
-      throw new BadRequestException(
-        'Production schematic has no input products defined',
-      );
+      throw new BadRequestException('Production schematic has no input items defined');
     }
-
     if (inputs.length !== inputQty.length) {
-      throw new BadRequestException(
-        'Input products and input quantities must have the same length',
-      );
+      throw new BadRequestException('Input items and quantities must have the same length');
     }
 
-    // Deduct input quantities from inventory
     for (let i = 0; i < inputs.length; i++) {
-      const productId = inputs[i];
+      const itemId = inputs[i];
       const requiredQty = inputQty[i];
-
       const inventory = await this.inventoryRepository.findOne({
-        where: { productId },
+        where: { itemId },
       });
-
       if (!inventory) {
-        throw new BadRequestException(
-          `No inventory found for input product ${productId}`,
-        );
+        throw new BadRequestException(`No inventory found for input item ${itemId}`);
       }
-
       if (inventory.quantityOnHand < requiredQty) {
         throw new BadRequestException(
-          `Insufficient inventory for product ${productId}. ` +
-            `Available: ${inventory.quantityOnHand}, Required: ${requiredQty}`,
+          `Insufficient inventory for item ${itemId}. Available: ${inventory.quantityOnHand}, Required: ${requiredQty}`,
         );
       }
-
       inventory.quantityOnHand -= requiredQty;
       await this.inventoryRepository.save(inventory);
     }
 
-    // Add output to inventory
     const outputInventory = await this.inventoryRepository.findOne({
-      where: { productId: schematic.outputProductId },
+      where: { itemId: schematic.outputItemId },
     });
-
     if (!outputInventory) {
       throw new BadRequestException(
-        `No inventory found for output product ${schematic.outputProductId}. ` +
-          `Please create an inventory record for this product first.`,
+        `No inventory found for output item ${schematic.outputItemId}. Create an inventory record first.`,
       );
     }
-
     outputInventory.quantityOnHand += schematic.outputQty;
     await this.inventoryRepository.save(outputInventory);
 

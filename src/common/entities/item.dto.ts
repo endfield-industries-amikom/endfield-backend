@@ -8,10 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-/**
- * Shared base DTO for creating any stockable item.
- */
-export abstract class CreateItemDto {
+export class CreateItemDto {
   @ApiProperty()
   @IsString()
   @MinLength(1)
@@ -56,12 +53,19 @@ export abstract class CreateItemDto {
   @IsOptional()
   @IsBoolean()
   isManufactureable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  imageUri?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  soldQty?: number;
 }
 
-/**
- * Shared base DTO for updating any stockable item.
- */
-export abstract class UpdateItemDto {
+export class UpdateItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -109,4 +113,14 @@ export abstract class UpdateItemDto {
   @IsOptional()
   @IsBoolean()
   isManufactureable?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  imageUri?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  soldQty?: number;
 }

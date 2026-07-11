@@ -11,18 +11,13 @@ export class OrderItemService {
     private readonly orderItemRepository: Repository<OrderItem>,
   ) {}
 
-  async create(createOrderItemDto: CreateOrderItemDto): Promise<OrderItem> {
-    const lineTotal = createOrderItemDto.quantity * createOrderItemDto.unitPrice;
-    const item = this.orderItemRepository.create({
-      ...createOrderItemDto,
-      lineTotal,
-    });
+  async create(dto: CreateOrderItemDto): Promise<OrderItem> {
+    const lineTotal = dto.quantity * dto.unitPrice;
+    const item = this.orderItemRepository.create({ ...dto, lineTotal });
     return this.orderItemRepository.save(item);
   }
 
-  async createMany(
-    dtos: CreateOrderItemDto[],
-  ): Promise<OrderItem[]> {
+  async createMany(dtos: CreateOrderItemDto[]): Promise<OrderItem[]> {
     const items = dtos.map((dto) =>
       this.orderItemRepository.create({
         ...dto,
@@ -32,31 +27,20 @@ export class OrderItemService {
     return this.orderItemRepository.save(items);
   }
 
-  async findAll(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: OrderItem[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async findAll(page: number = 1, limit: number = 10) {
     const [data, total] = await this.orderItemRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
-      relations: ['product'],
+      relations: ['item'],
     });
     return { data, total, page, limit };
   }
 
-  async findByOrderId(
-    orderType: string,
-    orderId: string,
-  ): Promise<OrderItem[]> {
+  async findByOrderId(orderType: string, orderId: string): Promise<OrderItem[]> {
     return this.orderItemRepository.find({
       where: { orderType, orderId },
-      relations: ['product'],
+      relations: ['item'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -64,19 +48,15 @@ export class OrderItemService {
   async findOne(id: string): Promise<OrderItem> {
     const item = await this.orderItemRepository.findOne({
       where: { id },
-      relations: ['product'],
+      relations: ['item'],
     });
-    if (!item) {
-      throw new NotFoundException('Order item not found');
-    }
+    if (!item) throw new NotFoundException('Order item not found');
     return item;
   }
 
   async remove(id: string): Promise<void> {
     const result = await this.orderItemRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Order item not found');
-    }
+    if (result.affected === 0) throw new NotFoundException('Order item not found');
   }
 
   async removeByOrderId(orderType: string, orderId: string): Promise<void> {
