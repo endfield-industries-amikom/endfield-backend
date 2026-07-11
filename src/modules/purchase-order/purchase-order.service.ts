@@ -3,19 +3,41 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PurchaseOrder } from './purchase-order.entity';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dtos/index';
+import { OrderItemService } from '../order-item/order-item.service';
 
 @Injectable()
 export class PurchaseOrderService {
   constructor(
     @InjectRepository(PurchaseOrder)
     private readonly poRepository: Repository<PurchaseOrder>,
+    private readonly orderItemService: OrderItemService,
   ) {}
 
   async create(
     createPurchaseOrderDto: CreatePurchaseOrderDto,
   ): Promise<PurchaseOrder> {
-    const po = this.poRepository.create(createPurchaseOrderDto);
-    return this.poRepository.save(po);
+    const { items, ...poData } = createPurchaseOrderDto;
+
+    const totalAmount = this.calculateTotalAmount(items ?? []);
+    const po = this.poRepository.create({ ...poData, totalAmount });
+    const savedPo = await this.poRepository.save(po);
+
+    if (items && items.length > 0) {
+      const orderItems = items.map((item) => ({
+        ...item,
+        orderType: 'PURCHASE',
+        orderId: savedPo.id,
+      }));
+      await this.orderItemService.createMany(orderItems);
+    }
+
+    return savedPo;
+  }
+
+  private calculateTotalAmount(
+    items: { quantity: number; unitPrice: number }[],
+  ): number {
+    return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   }
 
   async findAll(

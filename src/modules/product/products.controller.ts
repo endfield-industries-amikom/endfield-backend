@@ -45,6 +45,15 @@ export class ProductsController {
       .sendResponse(res, data);
   }
 
+  @Get('top-selling')
+  async getTopSelling(@Res() res: any) {
+    const data = await this.productsService.getTopSelling();
+    return this.responsesService
+      .code('success')
+      .message('Top selling products retrieved successfully')
+      .sendResponse(res, data);
+  }
+
   @Get(':id')
   @Roles('Admin', 'Employee', 'Consumer')
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Res() res: any) {

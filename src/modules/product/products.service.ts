@@ -49,4 +49,11 @@ export class ProductsService {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
   }
+
+  async getTopSelling(limit: number = 10) {
+    return this.productRepository.find({
+      order: { soldQty: 'DESC' },
+      take: limit,
+    });
+  }
 }

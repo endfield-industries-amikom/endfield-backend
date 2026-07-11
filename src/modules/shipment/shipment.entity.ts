@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
+import { SalesOrder } from '../sales-order/sales-order.entity';
 
 @Entity('SHIPMENT')
 export class Shipment {
@@ -20,6 +21,13 @@ export class Shipment {
   @ManyToOne(() => PurchaseOrder)
   @JoinColumn({ name: 'po_id' })
   purchaseOrder: PurchaseOrder;
+
+  @Column({ name: 'sales_order_id', nullable: true })
+  salesOrderId: string;
+
+  @ManyToOne(() => SalesOrder)
+  @JoinColumn({ name: 'sales_order_id' })
+  salesOrder: SalesOrder;
 
   @Column({ nullable: true })
   carrier: string;

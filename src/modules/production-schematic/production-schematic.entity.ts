@@ -1,0 +1,55 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { Product } from 'src/modules/product/product.entity';
+
+@Entity('PRODUCTION_SCHEMATIC')
+export class ProductionSchematic {
+  @PrimaryGeneratedColumn('uuid', { name: 'production_schematic_id' })
+  id: string;
+
+  @ApiProperty()
+  @Column({ length: 255 })
+  name: string;
+
+  @ApiProperty()
+  @Column({ length: 100 })
+  type: string;
+
+  @ApiProperty({ type: [String] })
+  @Column({ type: 'simple-json', nullable: true })
+  inputs: string[];
+
+  @ApiProperty({ type: [Number] })
+  @Column({ type: 'simple-json', nullable: true })
+  inputQty: number[];
+
+  @ApiProperty()
+  @Column({ type: 'int' })
+  duration: number;
+
+  @ApiProperty()
+  @Column({ type: 'int', name: 'output_qty' })
+  outputQty: number;
+
+  @ApiProperty()
+  @Column({ name: 'output_product_id' })
+  outputProductId: string;
+
+  @ManyToOne(() => Product)
+  @JoinColumn({ name: 'output_product_id' })
+  outputProduct: Product;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

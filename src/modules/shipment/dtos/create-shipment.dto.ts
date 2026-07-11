@@ -9,6 +9,11 @@ export class CreateShipmentDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  salesOrderId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   carrier?: string;
 
   @ApiProperty({ required: false })

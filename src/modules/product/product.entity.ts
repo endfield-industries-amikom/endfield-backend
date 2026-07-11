@@ -1,34 +1,26 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Item } from '../../common/entities/item.entity';
 
 @Entity('PRODUCT')
-export class Product {
+export class Product extends Item {
   @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
-  id: string;
+  declare id: string;
 
-  @Column({ length: 255 })
-  name: string;
+  @Column({ length: 50, default: 'product' })
+  type: string;
 
-  @Column({ length: 100, unique: true })
-  sku: string;
+  @Column({
+    name: 'capacity_usage',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 1,
+  })
+  capacityUsage: number;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
+  @Column({ name: 'image_uri', nullable: true })
+  imageUri: string;
 
-  @Column({ length: 100, nullable: true })
-  category: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'unit_price' })
-  unitPrice: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @Column({ name: 'sold_qty', default: 0 })
+  soldQty: number;
 }

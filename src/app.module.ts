@@ -27,6 +27,11 @@ import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.mod
 import { ShipmentModule } from './modules/shipment/shipment.module';
 import { CustomersModule } from './modules/customer/customers.module';
 import { SalesOrdersModule } from './modules/sales-order/sales-orders.module';
+import { ProductionSchematicModule } from './modules/production-schematic/production-schematic.module';
+import { ProductionSimulationModule } from './modules/production-simulation/production-simulation.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { MaterialsModule } from './modules/material/materials.module';
+import { OrderItemModule } from './modules/order-item/order-item.module';
 import { SessionMiddleware } from './common/middlewares/session.middleware';
 import { AdminModule } from './admin/admin.module';
 import { APP_FILTER } from '@nestjs/core';
@@ -51,6 +56,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
     ShipmentModule,
     CustomersModule,
     SalesOrdersModule,
+    ProductionSchematicModule,
+    ProductionSimulationModule,
+    UploadModule,
+    MaterialsModule,
+    OrderItemModule,
     AdminModule,
     ConfigModule.forRoot({
       envFilePath: ['.env.development.local', '.env.production.local', '.env'],

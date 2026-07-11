@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
+import fastifyMultipart from '@fastify/multipart';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { seed } from './database/seed';
 
@@ -54,6 +55,8 @@ async function bootstrap() {
     },
     saveUninitialized: false,
   });
+
+  await app.register(fastifyMultipart);
 
   // Swagger (development only)
   if (process.env.NODE_ENV === 'development') {

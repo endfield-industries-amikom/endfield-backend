@@ -1,43 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsNumber,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { UpdateItemDto } from '../../../common/entities/item.dto';
 
-export class UpdateProductDto {
+export class UpdateProductDto extends UpdateItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  @MinLength(1)
-  @MaxLength(255)
-  name?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  sku?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  category?: string;
+  @MaxLength(50)
+  type?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber(
     { maxDecimalPlaces: 2 },
-    { message: 'unitPrice must be a valid decimal number with up to 2 decimal places' },
+    { message: 'capacityUsage must be a valid decimal number with up to 2 decimal places' },
   )
-  unitPrice?: number;
+  capacityUsage?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  imageUri?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  soldQty?: number;
 }
