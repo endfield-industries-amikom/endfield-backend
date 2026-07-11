@@ -86,7 +86,8 @@ describe('Endfield Backend (e2e)', () => {
       .expect(200);
 
     adminToken = res.body.data.access_token;
-    adminCookies = res.headers['set-cookie'] ?? [];
+    const rawCookies = res.headers['set-cookie'];
+    adminCookies = Array.isArray(rawCookies) ? rawCookies : rawCookies ? [rawCookies] : [];
   }, 30000);
 
   afterAll(async () => {
@@ -926,7 +927,8 @@ describe('Endfield Backend (e2e)', () => {
         .post('/api/v1/shipment')
         .set(auth())
         .send({
-          poId: purchaseOrderId,
+          orderType: 'PURCHASE',
+          orderId: purchaseOrderId,
           carrier: 'E2E Courier',
           trackingNumber: `E2E-TRK-${Date.now()}`,
           notes: 'E2E test shipment',
@@ -934,6 +936,7 @@ describe('Endfield Backend (e2e)', () => {
         .expect(201);
 
       expect(res.body.data.carrier).toBe('E2E Courier');
+      expect(res.body.data.orderType).toBe('PURCHASE');
       shipmentId = res.body.data.id;
     });
 

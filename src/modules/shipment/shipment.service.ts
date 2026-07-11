@@ -5,6 +5,7 @@ import { Shipment } from './shipment.entity';
 import { CreateShipmentDto, UpdateShipmentDto } from './dtos/index';
 import { Inventory } from '../inventory/inventory.entity';
 import { SalesOrder } from '../sales-order/sales-order.entity';
+import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
 import { ProductionSimulationService } from '../production-simulation/production-simulation.service';
 import { OrderItem } from '../order-item/order-item.entity';
 import { Product } from '../product/product.entity';
@@ -20,6 +21,8 @@ export class ShipmentService {
     private readonly inventoryRepository: Repository<Inventory>,
     @InjectRepository(SalesOrder)
     private readonly salesOrderRepository: Repository<SalesOrder>,
+    @InjectRepository(PurchaseOrder)
+    private readonly purchaseOrderRepository: Repository<PurchaseOrder>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Product)
@@ -52,7 +55,6 @@ export class ShipmentService {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
-      relations: ['purchaseOrder', 'salesOrder'],
     });
     return { data, total, page, limit };
   }
@@ -60,7 +62,6 @@ export class ShipmentService {
   async findOne(id: string): Promise<Shipment> {
     const shipment = await this.shipmentRepository.findOne({
       where: { id },
-      relations: ['purchaseOrder', 'salesOrder'],
     });
     if (!shipment) {
       throw new NotFoundException('Shipment not found');
@@ -97,58 +98,60 @@ export class ShipmentService {
     await this.updateStatus(shipmentId, 'ARRIVED');
     this.logger.log(`Shipment ${shipmentId} status: ARRIVED`);
 
-    // Phase 3: Auto-add to inventory
+    // Phase 3: Resolve side effects based on order type
     const shipment = await this.findOne(shipmentId);
-    if (shipment.poId) {
-      // For purchase order shipments: restock the warehouse
-      const inventories = await this.inventoryRepository.find({
-        where: { warehouseId: shipment.purchaseOrder?.warehouseId },
-      });
-      if (inventories.length > 0) {
-        for (const inv of inventories) {
-          inv.quantityOnHand += 10; // Simulated restock
-          await this.inventoryRepository.save(inv);
-          this.logger.log(`Restocked inventory ${inv.id} with +10 units`);
-        }
-      }
+
+    if (shipment.orderType === 'PURCHASE') {
+      await this.handlePurchaseArrival(shipment);
+    } else if (shipment.orderType === 'SALES') {
+      await this.handleSalesArrival(shipment);
     }
+  }
 
-    // If linked to a sales order, update its status
-    if (shipment.salesOrderId) {
-      const salesOrder = await this.salesOrderRepository.findOne({
-        where: { id: shipment.salesOrderId },
-      });
-      if (salesOrder && salesOrder.status === 'PENDING') {
-        salesOrder.status = 'SHIPPED';
-        await this.salesOrderRepository.save(salesOrder);
-        this.logger.log(
-          `Sales order ${shipment.salesOrderId} marked as SHIPPED`,
-        );
+  private async handlePurchaseArrival(shipment: Shipment): Promise<void> {
+    const po = await this.purchaseOrderRepository.findOne({
+      where: { id: shipment.orderId },
+    });
+    if (!po) return;
 
-        // Increment soldQty on each product in the order items
-        const orderItems = await this.orderItemRepository.find({
-          where: { orderType: 'SALES', orderId: shipment.salesOrderId },
-        });
-        for (const item of orderItems) {
-          if (item.productId) {
-            await this.productRepository.increment(
-              { id: item.productId },
-              'soldQty',
-              item.quantity,
-            );
-            this.logger.log(
-              `Incremented soldQty for product ${item.productId} by ${item.quantity}`,
-            );
-          }
-        }
-      }
+    // Restock the warehouse
+    const inventories = await this.inventoryRepository.find({
+      where: { warehouseId: po.warehouseId },
+    });
+    for (const inv of inventories) {
+      inv.quantityOnHand += 10; // Simulated restock
+      await this.inventoryRepository.save(inv);
+      this.logger.log(`Restocked inventory ${inv.id} with +10 units`);
     }
 
     // Trigger production simulations for this warehouse
-    if (shipment.poId) {
-      const warehouseId = shipment.purchaseOrder?.warehouseId;
-      if (warehouseId) {
-        await this.productionSimulationService.executeForWarehouse(warehouseId);
+    await this.productionSimulationService.executeForWarehouse(po.warehouseId);
+  }
+
+  private async handleSalesArrival(shipment: Shipment): Promise<void> {
+    const salesOrder = await this.salesOrderRepository.findOne({
+      where: { id: shipment.orderId },
+    });
+    if (!salesOrder || salesOrder.status === 'SHIPPED') return;
+
+    salesOrder.status = 'SHIPPED';
+    await this.salesOrderRepository.save(salesOrder);
+    this.logger.log(`Sales order ${shipment.orderId} marked as SHIPPED`);
+
+    // Increment soldQty on each product in the order items
+    const orderItems = await this.orderItemRepository.find({
+      where: { orderType: 'SALES', orderId: shipment.orderId },
+    });
+    for (const item of orderItems) {
+      if (item.productId) {
+        await this.productRepository.increment(
+          { id: item.productId },
+          'soldQty',
+          item.quantity,
+        );
+        this.logger.log(
+          `Incremented soldQty for product ${item.productId} by ${item.quantity}`,
+        );
       }
     }
   }

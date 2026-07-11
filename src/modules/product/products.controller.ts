@@ -45,6 +45,7 @@ export class ProductsController {
       .sendResponse(res, data);
   }
 
+
   @Get('top-selling')
   async getTopSelling(@Res() res: any) {
     const data = await this.productsService.getTopSelling();

@@ -4,6 +4,7 @@ import { Shipment } from './shipment.entity';
 import { ShipmentService } from './shipment.service';
 import { ShipmentController } from './shipment.controller';
 import { SalesOrder } from '../sales-order/sales-order.entity';
+import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
 import { InventoryModule } from '../inventory/inventory.module';
 import { Inventory } from '../inventory/inventory.entity';
 import { ProductionSimulationModule } from '../production-simulation/production-simulation.module';
@@ -12,7 +13,14 @@ import { Product } from '../product/product.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Shipment, SalesOrder, Inventory, OrderItem, Product]),
+    TypeOrmModule.forFeature([
+      Shipment,
+      SalesOrder,
+      PurchaseOrder,
+      Inventory,
+      OrderItem,
+      Product,
+    ]),
     InventoryModule,
     ProductionSimulationModule,
   ],

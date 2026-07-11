@@ -2,32 +2,20 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
-import { SalesOrder } from '../sales-order/sales-order.entity';
 
 @Entity('SHIPMENT')
 export class Shipment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'po_id' })
-  poId: string;
+  @Column({ name: 'order_type' })
+  orderType: string;
 
-  @ManyToOne(() => PurchaseOrder)
-  @JoinColumn({ name: 'po_id' })
-  purchaseOrder: PurchaseOrder;
-
-  @Column({ name: 'sales_order_id', nullable: true })
-  salesOrderId: string;
-
-  @ManyToOne(() => SalesOrder)
-  @JoinColumn({ name: 'sales_order_id' })
-  salesOrder: SalesOrder;
+  @Column({ name: 'order_id' })
+  orderId: string;
 
   @Column({ nullable: true })
   carrier: string;
