@@ -654,7 +654,7 @@ Deletes OrderItems → PurchaseOrder → Order in a transaction.
 
 ### `POST /purchase-order/:id/approve`
 
-Sets the order status to `APPROVED`.
+Sets the order status to `APPROVED`. Fails with 400 if total item capacity exceeds warehouse available capacity.
 
 **Auth:** `Authorization: Bearer <jwt>` (Admin)
 
@@ -1481,11 +1481,18 @@ Standard CRUD.
 
 ### `POST /production-schematic/:id/produce`
 
-Execute the schematic: deduct input items from inventory, add output to inventory.
+Execute the schematic: deduct input items from inventory, add output to inventory. Auto-creates output inventory record if none exists.
 
 **Auth:** `Authorization: Bearer <jwt>` (Admin, Employee)
 
-**Response** `200`: `{ "statusCode": 200, "message": "Production executed", "data": { ...schematic } }`
+**Request:**
+```json
+{
+  "warehouseId": "uuid?"
+}
+```
+
+**Response** `200`: `{ "statusCode": 200, "message": "Production completed", "data": { ...schematic } }`
 
 ---
 

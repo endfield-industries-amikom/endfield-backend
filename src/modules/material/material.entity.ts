@@ -18,7 +18,4 @@ export class Material {
   @OneToOne(() => Item)
   @JoinColumn({ name: 'item_id' })
   item: Item;
-
-  @Column({ length: 50, nullable: true })
-  unit: string;
 }

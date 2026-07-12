@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Order } from '../../common/entities/order.entity';
 import { Customer } from '../customer/customer.entity';
+import { Region } from '../region/region.entity';
 
 @Entity('SALES_ORDER')
 export class SalesOrder {
@@ -24,4 +25,11 @@ export class SalesOrder {
   @ManyToOne(() => Customer)
   @JoinColumn({ name: 'customer_id' })
   customer: Customer;
+
+  @Column({ name: 'region_id', nullable: true })
+  regionId: string;
+
+  @ManyToOne(() => Region)
+  @JoinColumn({ name: 'region_id' })
+  region: Region;
 }

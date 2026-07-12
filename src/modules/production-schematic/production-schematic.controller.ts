@@ -99,8 +99,12 @@ export class ProductionSchematicController {
 
   @Post(':id/produce')
   @Roles('Admin', 'Employee')
-  async produce(@Param('id') id: string, @Res() res: any) {
-    const schematic = await this.schematicService.produce(id);
+  async produce(
+    @Param('id') id: string,
+    @Body('warehouseId') warehouseId: string,
+    @Res() res: any,
+  ) {
+    const schematic = await this.schematicService.produce(id, warehouseId || undefined);
     return this.responsesService
       .code('success')
       .message('Production completed successfully')

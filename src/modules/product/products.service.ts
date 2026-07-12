@@ -34,25 +34,24 @@ export class ProductsService {
   }
 
   async create(dto: CreateProductDto) {
-    const { type, capacityUsage, ...itemFields } = dto;
+    const { type, ...itemFields } = dto;
     const item = this.itemRepository.create(itemFields);
     const savedItem = await this.itemRepository.save(item);
     const product = this.productRepository.create({
       itemId: savedItem.id,
       type,
-      capacityUsage,
     });
     return this.productRepository.save(product);
   }
 
   async update(id: string, dto: UpdateProductDto) {
     const product = await this.findOne(id);
-    const { type, capacityUsage, ...itemFields } = dto;
+    const { type, ...itemFields } = dto;
     if (Object.keys(itemFields).length > 0) {
       await this.itemRepository.update(product.itemId, itemFields);
     }
-    if (type !== undefined || capacityUsage !== undefined) {
-      Object.assign(product, { type, capacityUsage });
+    if (type !== undefined) {
+      product.type = type;
       await this.productRepository.save(product);
     }
     return this.findOne(id);
@@ -65,10 +64,9 @@ export class ProductsService {
   }
 
   async getTopSelling(limit: number = 10) {
-    const items = await this.itemRepository.find({
+    return this.itemRepository.find({
       order: { soldQty: 'DESC' },
       take: limit,
     });
-    return items;
   }
 }

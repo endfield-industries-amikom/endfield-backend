@@ -30,7 +30,7 @@ export class RegionsController {
   ) {}
 
   @Get()
-  @Roles('Admin', 'Employee')
+  @Roles('Admin', 'Employee', 'Consumer')
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async findAll(
@@ -46,7 +46,7 @@ export class RegionsController {
   }
 
   @Get(':id')
-  @Roles('Admin', 'Employee')
+  @Roles('Admin', 'Employee', 'Consumer')
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Res() res: any) {
     const data = await this.regionsService.findOne(id);
     return this.responsesService

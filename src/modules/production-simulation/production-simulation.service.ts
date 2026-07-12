@@ -40,7 +40,7 @@ export class ProductionSimulationService {
       });
 
       try {
-        await this.productionSchematicService.produce(schematic.id);
+        await this.productionSchematicService.produce(schematic.id, warehouseId);
         await this.historyService.markCompleted(history.id);
         this.logger.log(
           `Schematic "${schematic.name}" (${schematic.id}) executed for warehouse ${warehouseId}`,

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { PurchaseOrder } from './purchase-order.entity';
@@ -47,7 +47,7 @@ export class PurchaseOrderService {
 
       return manager.findOneOrFail(PurchaseOrder, {
         where: { orderId: savedOrder.id },
-        relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
+        relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
       });
     });
   }
@@ -68,7 +68,7 @@ export class PurchaseOrderService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
+      relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
     });
     return { data, total, page, limit };
   }
@@ -76,7 +76,7 @@ export class PurchaseOrderService {
   async findOne(orderId: string): Promise<PurchaseOrder> {
     const po = await this.poRepository.findOne({
       where: { orderId },
-      relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
+      relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
     });
     if (!po) throw new NotFoundException('Purchase order not found');
     return po;
@@ -108,6 +108,29 @@ export class PurchaseOrderService {
 
   async approve(orderId: string): Promise<PurchaseOrder> {
     const po = await this.findOne(orderId);
+
+    // Check warehouse capacity before approving
+    const warehouse = po.warehouse;
+    const orderItems = po.order?.orderItems ?? [];
+
+    if (warehouse && orderItems.length > 0) {
+      // Calculate total capacity load: sum(quantity × item.capacityUsage)
+      const totalLoad = orderItems.reduce((sum, oi) => {
+        const usage = Number(oi.item?.capacityUsage ?? 1);
+        return sum + oi.quantity * usage;
+      }, 0);
+
+      const currentLoad = Number(warehouse.currentLoad ?? 0);
+      const maxCapacity = Number(warehouse.maxCapacity ?? 0);
+
+      if (maxCapacity > 0 && currentLoad + totalLoad > maxCapacity) {
+        throw new BadRequestException(
+          `Cannot approve: warehouse capacity exceeded. ` +
+          `Current: ${currentLoad}, Required: ${totalLoad}, Max: ${maxCapacity}`,
+        );
+      }
+    }
+
     await this.orderRepository.update(po.orderId, { status: 'APPROVED' });
     return this.findOne(orderId);
   }

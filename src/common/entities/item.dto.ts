@@ -63,6 +63,14 @@ export class CreateItemDto {
   @IsOptional()
   @IsNumber()
   soldQty?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'capacityUsage must be a valid decimal number with up to 2 decimal places' },
+  )
+  capacityUsage?: number;
 }
 
 export class UpdateItemDto {
@@ -123,4 +131,12 @@ export class UpdateItemDto {
   @IsOptional()
   @IsNumber()
   soldQty?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'capacityUsage must be a valid decimal number with up to 2 decimal places' },
+  )
+  capacityUsage?: number;
 }

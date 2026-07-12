@@ -41,6 +41,15 @@ export class Item {
   @Column({ name: 'sold_qty', default: 0 })
   soldQty: number;
 
+  @Column({
+    name: 'capacity_usage',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    default: 1,
+  })
+  capacityUsage: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

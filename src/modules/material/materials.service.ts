@@ -34,26 +34,15 @@ export class MaterialsService {
   }
 
   async create(dto: CreateMaterialDto) {
-    const { unit, ...itemFields } = dto;
-    const item = this.itemRepository.create(itemFields);
+    const item = this.itemRepository.create(dto);
     const savedItem = await this.itemRepository.save(item);
-    const material = this.materialRepository.create({
-      itemId: savedItem.id,
-      unit,
-    });
+    const material = this.materialRepository.create({ itemId: savedItem.id });
     return this.materialRepository.save(material);
   }
 
   async update(id: string, dto: UpdateMaterialDto) {
     const material = await this.findOne(id);
-    const { unit, ...itemFields } = dto;
-    if (Object.keys(itemFields).length > 0) {
-      await this.itemRepository.update(material.itemId, itemFields);
-    }
-    if (unit !== undefined) {
-      material.unit = unit;
-      await this.materialRepository.save(material);
-    }
+    await this.itemRepository.update(material.itemId, dto as any);
     return this.findOne(id);
   }
 

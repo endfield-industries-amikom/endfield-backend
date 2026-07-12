@@ -6,11 +6,7 @@ import { CreateOrderItemDto } from '../../order-item/dtos';
 export class CreateSalesOrderDto {
   @ApiProperty()
   @IsUUID()
-  customerId: string;
-
-  @ApiProperty()
-  @IsUUID()
-  warehouseId: string;
+  regionId: string;
 
   @ApiProperty({ required: false })
   @IsDateString()

@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -35,10 +36,11 @@ export class SalesOrdersController {
   @Roles('Admin', 'Consumer')
   async create(
     @Body() createSalesOrderDto: CreateSalesOrderDto,
+    @Request() req: any,
     @Res() res: any,
   ) {
     const salesOrder =
-      await this.salesOrdersService.create(createSalesOrderDto);
+      await this.salesOrdersService.create(createSalesOrderDto, req.user.email);
     return this.responsesService
       .code('created')
       .message('Sales order created successfully')

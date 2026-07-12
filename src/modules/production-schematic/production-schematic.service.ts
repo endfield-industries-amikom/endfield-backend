@@ -21,7 +21,9 @@ export class ProductionSchematicService {
     private readonly inventoryRepository: Repository<Inventory>,
   ) {}
 
-  async create(dto: CreateProductionSchematicDto): Promise<ProductionSchematic> {
+  async create(
+    dto: CreateProductionSchematicDto,
+  ): Promise<ProductionSchematic> {
     const schematic = this.schematicRepository.create(dto);
     return this.schematicRepository.save(schematic);
   }
@@ -56,7 +58,7 @@ export class ProductionSchematicService {
     if (result.affected === 0) throw new NotFoundException('Production schematic not found');
   }
 
-  async produce(id: string): Promise<ProductionSchematic> {
+  async produce(id: string, warehouseId?: string): Promise<ProductionSchematic> {
     const schematic = await this.schematicRepository.findOne({
       where: { id },
       relations: ['outputItem'],
@@ -73,14 +75,18 @@ export class ProductionSchematicService {
       throw new BadRequestException('Input items and quantities must have the same length');
     }
 
+    // Deduct inputs from inventory (scoped to warehouse if provided)
     for (let i = 0; i < inputs.length; i++) {
       const itemId = inputs[i];
       const requiredQty = inputQty[i];
-      const inventory = await this.inventoryRepository.findOne({
-        where: { itemId },
-      });
+
+      const where: any = { itemId };
+      if (warehouseId) where.warehouseId = warehouseId;
+
+      const inventory = await this.inventoryRepository.findOne({ where });
       if (!inventory) {
-        throw new BadRequestException(`No inventory found for input item ${itemId}`);
+        const scope = warehouseId ? ` in warehouse ${warehouseId}` : '';
+        throw new BadRequestException(`No inventory found for input item ${itemId}${scope}`);
       }
       if (inventory.quantityOnHand < requiredQty) {
         throw new BadRequestException(
@@ -91,16 +97,26 @@ export class ProductionSchematicService {
       await this.inventoryRepository.save(inventory);
     }
 
-    const outputInventory = await this.inventoryRepository.findOne({
-      where: { itemId: schematic.outputItemId },
-    });
-    if (!outputInventory) {
-      throw new BadRequestException(
-        `No inventory found for output item ${schematic.outputItemId}. Create an inventory record first.`,
-      );
+    // Add output to inventory — auto-create if missing
+    const outWhere: any = { itemId: schematic.outputItemId };
+    if (warehouseId) outWhere.warehouseId = warehouseId;
+
+    let outputInventory = await this.inventoryRepository.findOne({ where: outWhere });
+
+    if (outputInventory) {
+      outputInventory.quantityOnHand += schematic.outputQty;
+      await this.inventoryRepository.save(outputInventory);
+    } else {
+      // Auto-create inventory record for the output item in this warehouse
+      outputInventory = this.inventoryRepository.create({
+        itemId: schematic.outputItemId,
+        warehouseId: warehouseId ?? undefined,
+        quantityOnHand: schematic.outputQty,
+        reservedQuantity: 0,
+        reorderLevel: 10,
+      });
+      await this.inventoryRepository.save(outputInventory);
     }
-    outputInventory.quantityOnHand += schematic.outputQty;
-    await this.inventoryRepository.save(outputInventory);
 
     return schematic;
   }

@@ -46,14 +46,6 @@ export class InventoryEventHandler {
       return;
     }
 
-    // Update order status to ARRIVED
-    await this.dataSource.manager.update(
-      Order,
-      { id: shipment.orderId },
-      { status: 'ARRIVED' },
-    );
-    this.logger.log(`Order ${shipment.orderId} status: ARRIVED`);
-
     if (shipment.orderType === 'PURCHASE') {
       await this.handlePurchaseArrival(shipment);
     } else if (shipment.orderType === 'SALES') {
@@ -71,15 +63,15 @@ export class InventoryEventHandler {
           relations: ['order'],
         });
         if (!po) {
-          await this.failShipment(manager, shipment.id, 'Purchase order not found');
+          await this.failShipment(manager, shipment.id, orderId, 'Purchase order not found');
           return;
         }
 
         const warehouse = await manager.findOne(Warehouse, {
-          where: { id: po.order.warehouseId },
+          where: { id: po.warehouseId },
         });
         if (!warehouse) {
-          await this.failShipment(manager, shipment.id, 'Destination warehouse not found');
+          await this.failShipment(manager, shipment.id, orderId, 'Destination warehouse not found');
           return;
         }
 
@@ -92,18 +84,25 @@ export class InventoryEventHandler {
           return;
         }
 
-        const totalNewQuantity = orderItems.reduce(
-          (sum, oi) => sum + oi.quantity,
-          0,
-        );
+        // Load all items to get their capacityUsage
+        const itemIds = [...new Set(orderItems.map((oi) => oi.itemId))];
+        const items = await manager.findByIds(Item, itemIds);
+        const itemMap = new Map(items.map((it) => [it.id, it]));
+
+        // Calculate total load: sum(quantity × capacityUsage)
+        const totalNewLoad = orderItems.reduce((sum, oi) => {
+          const item = itemMap.get(oi.itemId);
+          const usage = Number(item?.capacityUsage ?? 1);
+          return sum + oi.quantity * usage;
+        }, 0);
 
         // Check capacity
-        if (warehouse.currentLoad + totalNewQuantity > warehouse.maxCapacity) {
+        if (warehouse.currentLoad + totalNewLoad > warehouse.maxCapacity) {
           const msg =
             `Warehouse capacity exceeded. ` +
-            `Current: ${warehouse.currentLoad}, Incoming: ${totalNewQuantity}, ` +
+            `Current: ${warehouse.currentLoad}, Incoming: ${totalNewLoad}, ` +
             `Max: ${warehouse.maxCapacity}`;
-          await this.failShipment(manager, shipment.id, msg);
+          await this.failShipment(manager, shipment.id, orderId, msg);
           this.logger.warn(msg);
           return;
         }
@@ -133,7 +132,7 @@ export class InventoryEventHandler {
         }
 
         // Update warehouse load
-        warehouse.currentLoad += totalNewQuantity;
+        warehouse.currentLoad += totalNewLoad;
         await manager.save(warehouse);
 
         this.logger.log(
@@ -148,9 +147,13 @@ export class InventoryEventHandler {
       });
       if (po) {
         await this.productionSimulationService.executeForWarehouse(
-          po.order.warehouseId,
+          po.warehouseId,
         );
       }
+
+      // Mark order as ARRIVED after successful processing
+      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'ARRIVED' });
+      this.logger.log(`Order ${orderId} status: ARRIVED`);
     } catch (error) {
       this.logger.error(
         `Purchase arrival failed for shipment ${shipment.id}: ${(error as Error).message}`,
@@ -159,6 +162,7 @@ export class InventoryEventHandler {
         status: 'FAILED',
         statusMessage: `Transaction error: ${(error as Error).message}`,
       });
+      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'FAILED' });
     }
   }
 
@@ -201,17 +205,20 @@ export class InventoryEventHandler {
       this.logger.error(
         `Sales arrival failed for shipment ${shipment.id}: ${(error as Error).message}`,
       );
+      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'FAILED' });
     }
   }
 
   private async failShipment(
     manager: any,
     shipmentId: string,
+    orderId: string,
     message: string,
   ): Promise<void> {
     await manager.update(Shipment, shipmentId, {
       status: 'FAILED',
       statusMessage: message,
     });
+    await manager.update(Order, { id: orderId }, { status: 'FAILED' });
   }
 }

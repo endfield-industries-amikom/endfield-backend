@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { SalesOrder } from './sales-order.entity';
 import { Order } from '../../common/entities/order.entity';
 import { OrderItem } from '../order-item/order-item.entity';
 import { Item } from '../../common/entities/item.entity';
+import { Customer } from '../customer/customer.entity';
 import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
 
 @Injectable()
@@ -18,11 +19,17 @@ export class SalesOrdersService {
     private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Item)
     private readonly itemRepository: Repository<Item>,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(dto: CreateSalesOrderDto): Promise<SalesOrder> {
-    const { items, customerId, ...orderFields } = dto;
+  async create(dto: CreateSalesOrderDto, userEmail: string): Promise<SalesOrder> {
+    const { items, regionId, ...orderFields } = dto;
+
+    // Look up customer by authenticated user's email
+    const customer = await this.customerRepository.findOne({ where: { email: userEmail } });
+    if (!customer) throw new NotFoundException('Customer record not found for your account');
 
     return this.dataSource.transaction(async (manager) => {
       const totalAmount = this.calculateTotalAmount(items ?? []);
@@ -31,7 +38,8 @@ export class SalesOrdersService {
 
       const so = manager.create(SalesOrder, {
         orderId: savedOrder.id,
-        customerId,
+        customerId: customer.id,
+        regionId,
       });
       await manager.save(so);
 
@@ -49,7 +57,7 @@ export class SalesOrdersService {
 
       return manager.findOneOrFail(SalesOrder, {
         where: { orderId: savedOrder.id },
-        relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
+        relations: { order: { orderItems: { item: true } }, customer: true, region: true },
       });
     });
   }
@@ -70,7 +78,7 @@ export class SalesOrdersService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
+      relations: { order: { orderItems: { item: true } }, customer: true, region: true },
     });
     return { data, total, page, limit };
   }
@@ -78,7 +86,7 @@ export class SalesOrdersService {
   async findOne(orderId: string) {
     const so = await this.salesOrderRepository.findOne({
       where: { orderId },
-      relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
+      relations: { order: { orderItems: { item: true } }, customer: true, region: true },
     });
     if (!so) throw new NotFoundException('Sales order not found');
     return so;
@@ -86,12 +94,15 @@ export class SalesOrdersService {
 
   async update(orderId: string, dto: UpdateSalesOrderDto) {
     const so = await this.findOne(orderId);
-    const { customerId, ...orderFields } = dto as any;
+    const { customerId, regionId, ...orderFields } = dto as any;
     if (Object.keys(orderFields).length > 0) {
       await this.orderRepository.update(so.orderId, orderFields);
     }
-    if (customerId !== undefined) {
-      so.customerId = customerId;
+    const updates: any = {};
+    if (customerId !== undefined) updates.customerId = customerId;
+    if (regionId !== undefined) updates.regionId = regionId;
+    if (Object.keys(updates).length > 0) {
+      Object.assign(so, updates);
       await this.salesOrderRepository.save(so);
     }
     return this.findOne(orderId);

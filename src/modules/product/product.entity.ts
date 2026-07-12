@@ -21,13 +21,4 @@ export class Product {
 
   @Column({ length: 50, default: 'product' })
   type: string;
-
-  @Column({
-    name: 'capacity_usage',
-    type: 'decimal',
-    precision: 5,
-    scale: 2,
-    default: 1,
-  })
-  capacityUsage: number;
 }
