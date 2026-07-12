@@ -49,14 +49,17 @@ export class SalesOrdersController {
   @Roles('Admin', 'Employee', 'Consumer')
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
   async findAll(
     @Query('page') page: string,
     @Query('limit') limit: string,
+    @Query('status') status: string,
     @Res() res: any,
   ) {
     const result = await this.salesOrdersService.findAll(
       Number(page) || 1,
       Number(limit) || 10,
+      status || undefined,
     );
     return this.responsesService
       .code('success')

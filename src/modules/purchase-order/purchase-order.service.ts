@@ -58,8 +58,13 @@ export class PurchaseOrderService {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
+  async findAll(page: number = 1, limit: number = 10, status?: string) {
+    const where: any = {};
+    if (status) {
+      where.order = { status };
+    }
     const [data, total] = await this.poRepository.findAndCount({
+      where,
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
