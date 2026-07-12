@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductionSimulation } from './production-simulation.entity';
 import { ProductionSimulationService } from './production-simulation.service';
@@ -9,8 +9,8 @@ import { InventoryModule } from '../inventory/inventory.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([ProductionSimulation]),
-    ProductionSchematicModule,
-    InventoryModule,
+    forwardRef(() => ProductionSchematicModule),
+    forwardRef(() => InventoryModule),
   ],
   providers: [ProductionSimulationService],
   controllers: [ProductionSimulationController],

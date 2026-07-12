@@ -5,7 +5,6 @@ import {
   Get,
   Param,
   Patch,
-  Post,
   Query,
   Res,
   UseGuards,
@@ -16,7 +15,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { InventoryService } from './inventory.service';
-import { CreateInventoryDto, UpdateInventoryDto } from './dtos';
+import { UpdateInventoryDto } from './dtos';
 
 @ApiTags('Inventory')
 @ApiBearerAuth('bearer')
@@ -27,16 +26,6 @@ export class InventoryController {
     private readonly inventoryService: InventoryService,
     private readonly responsesService: ResponsesService<any>,
   ) {}
-
-  @Post()
-  @Roles('Admin', 'Employee')
-  async create(@Body() createDto: CreateInventoryDto, @Res() res: any) {
-    const inventory = await this.inventoryService.create(createDto);
-    return this.responsesService
-      .code('created')
-      .message('Inventory created successfully')
-      .sendResponse(res, inventory);
-  }
 
   @Get()
   @Roles('Admin', 'Employee')

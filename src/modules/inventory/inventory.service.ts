@@ -28,12 +28,16 @@ export class InventoryService {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
+      relations: ['warehouse', 'item'],
     });
     return { data, total, page, limit };
   }
 
   async findById(id: string): Promise<Inventory> {
-    const inventory = await this.inventoryRepository.findOne({ where: { id } });
+    const inventory = await this.inventoryRepository.findOne({
+      where: { id },
+      relations: ['warehouse', 'item'],
+    });
     if (!inventory) {
       throw new NotFoundException('Inventory not found');
     }

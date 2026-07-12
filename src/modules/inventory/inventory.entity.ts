@@ -2,10 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { Warehouse } from '../warehouse/warehouse.entity';
+import { Item } from '../../common/entities/item.entity';
 
 @Entity('INVENTORY')
 export class Inventory {
@@ -16,9 +20,17 @@ export class Inventory {
   @Column({ name: 'warehouse_id' })
   warehouseId: string;
 
+  @ManyToOne(() => Warehouse)
+  @JoinColumn({ name: 'warehouse_id' })
+  warehouse: Warehouse;
+
   @ApiProperty()
   @Column({ name: 'item_id' })
   itemId: string;
+
+  @ManyToOne(() => Item)
+  @JoinColumn({ name: 'item_id' })
+  item: Item;
 
   @ApiProperty()
   @Column({ name: 'quantity_on_hand', default: 0 })

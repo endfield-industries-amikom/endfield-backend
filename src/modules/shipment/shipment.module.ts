@@ -3,22 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Shipment } from './shipment.entity';
 import { ShipmentService } from './shipment.service';
 import { ShipmentController } from './shipment.controller';
-import { SalesOrder } from '../sales-order/sales-order.entity';
-import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
-import { InventoryModule } from '../inventory/inventory.module';
-import { Inventory } from '../inventory/inventory.entity';
-import { ProductionSimulationModule } from '../production-simulation/production-simulation.module';
-import { OrderItem } from '../order-item/order-item.entity';
-import { Item } from '../../common/entities/item.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      Shipment, SalesOrder, PurchaseOrder, Inventory, OrderItem, Item,
-    ]),
-    InventoryModule,
-    ProductionSimulationModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Shipment])],
   providers: [ShipmentService],
   controllers: [ShipmentController],
   exports: [ShipmentService],

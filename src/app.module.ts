@@ -38,6 +38,7 @@ import { AdminModule } from './admin/admin.module';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
         limit: 100,
       },
     ]),
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [

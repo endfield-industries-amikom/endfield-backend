@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Order } from '../../common/entities/order.entity';
 
 @Entity('SHIPMENT')
 export class Shipment {
@@ -16,6 +19,10 @@ export class Shipment {
 
   @Column({ name: 'order_id' })
   orderId: string;
+
+  @ManyToOne(() => Order)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 
   @Column({ nullable: true })
   carrier: string;
@@ -31,6 +38,9 @@ export class Shipment {
 
   @Column({ default: 'PENDING' })
   status: string;
+
+  @Column({ name: 'status_message', type: 'text', nullable: true })
+  statusMessage: string;
 
   @Column({ nullable: true })
   notes: string;

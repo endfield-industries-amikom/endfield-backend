@@ -96,4 +96,14 @@ export class WarehousesController {
       .message('Warehouse deleted successfully')
       .sendResponse(res, null);
   }
+
+  @Get(':id/inventory')
+  @Roles('Admin', 'Employee')
+  async getInventory(@Param('id') id: string, @Res() res: any) {
+    const data = await this.warehousesService.findInventory(id);
+    return this.responsesService
+      .code('success')
+      .message('Warehouse inventory retrieved successfully')
+      .sendResponse(res, data);
+  }
 }

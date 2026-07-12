@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrderItem } from '../../modules/order-item/order-item.entity';
 
 @Entity('ORDER')
 export class Order {
@@ -35,6 +37,9 @@ export class Order {
 
   @Column({ nullable: true })
   notes: string;
+
+  @OneToMany(() => OrderItem, (oi) => oi.order)
+  orderItems: OrderItem[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -30,7 +30,8 @@ export class PurchaseOrderService {
         orderId: savedOrder.id,
         supplierId,
       });
-      const savedPo = await manager.save(po);
+
+      await manager.save(po);
 
       if (items && items.length > 0) {
         const orderItems = items.map((item) =>
@@ -38,6 +39,7 @@ export class PurchaseOrderService {
             ...item,
             orderType: 'PURCHASE',
             orderId: savedOrder.id,
+            lineTotal: item.quantity * item.unitPrice,
           }),
         );
         await manager.save(orderItems);
@@ -45,7 +47,7 @@ export class PurchaseOrderService {
 
       return manager.findOneOrFail(PurchaseOrder, {
         where: { orderId: savedOrder.id },
-        relations: ['order', 'supplier'],
+        relations: { order: { orderItems: { item: true } }, supplier: true },
       });
     });
   }
@@ -61,7 +63,7 @@ export class PurchaseOrderService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: ['order', 'supplier'],
+      relations: { order: { orderItems: { item: true } }, supplier: true },
     });
     return { data, total, page, limit };
   }
@@ -69,7 +71,7 @@ export class PurchaseOrderService {
   async findOne(orderId: string): Promise<PurchaseOrder> {
     const po = await this.poRepository.findOne({
       where: { orderId },
-      relations: ['order', 'supplier'],
+      relations: { order: { orderItems: { item: true } }, supplier: true },
     });
     if (!po) throw new NotFoundException('Purchase order not found');
     return po;

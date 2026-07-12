@@ -111,21 +111,33 @@ export class PurchaseOrderController {
     @Body() dto: CreateOrderItemDto,
     @Res() res: any,
   ) {
-    const item = await this.orderItemService.create({ ...dto, orderType: 'PURCHASE', orderId: id });
-    return this.responsesService.code('created').message('Item added').sendResponse(res, item);
+    const item = await this.orderItemService.create({
+      ...dto,
+      orderType: 'PURCHASE',
+    });
+    return this.responsesService
+      .code('created')
+      .message('Item added')
+      .sendResponse(res, item);
   }
 
   @Get(':id/items')
   @Roles('Admin', 'Employee')
   async getItems(@Param('id') id: string, @Res() res: any) {
     const items = await this.orderItemService.findByOrderId('PURCHASE', id);
-    return this.responsesService.code('success').message('Items retrieved').sendResponse(res, items);
+    return this.responsesService
+      .code('success')
+      .message('Items retrieved')
+      .sendResponse(res, items);
   }
 
   @Delete(':id/items/:itemId')
   @Roles('Admin', 'Employee')
   async removeItem(@Param('itemId') itemId: string, @Res() res: any) {
     await this.orderItemService.remove(itemId);
-    return this.responsesService.code('success').message('Item removed').sendResponse(res, null);
+    return this.responsesService
+      .code('success')
+      .message('Item removed')
+      .sendResponse(res, null);
   }
 }

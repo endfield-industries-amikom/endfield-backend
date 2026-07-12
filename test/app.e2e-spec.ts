@@ -30,7 +30,6 @@ describe('Endfield Backend (e2e)', () => {
   let materialId: string;
   let supplierId: string;
   let customerId: string;
-  let inventoryId: string;
   let purchaseOrderId: string;
   let salesOrderId: string;
   let shipmentId: string;
@@ -620,21 +619,16 @@ describe('Endfield Backend (e2e)', () => {
       itemId = p.body.data.itemId;
     });
 
-    it('POST /inventory — create', async () => {
-      const res = await request(app.getHttpServer() as App)
+    it('Inventories are created automatically on shipment arrival — cannot POST', async () => {
+      await request(app.getHttpServer() as App)
         .post('/api/v1/inventory')
         .set(auth())
         .send({
           warehouseId,
           itemId,
           quantityOnHand: 100,
-          reservedQuantity: 0,
-          reorderLevel: 10,
         })
-        .expect(201);
-
-      expect(res.body.data.quantityOnHand).toBe(100);
-      inventoryId = res.body.data.id;
+        .expect(404); // POST endpoint removed
     });
 
     it('GET /inventory — list', async () => {
@@ -646,45 +640,7 @@ describe('Endfield Backend (e2e)', () => {
       expect(res.body.data).toHaveProperty('data');
     });
 
-    it('GET /inventory/:id — get by id', async () => {
-      await request(app.getHttpServer() as App)
-        .get(`/api/v1/inventory/${inventoryId}`)
-        .set(auth())
-        .expect(200);
-    });
-
-    it('PATCH /inventory/:id/reserve — reserve stock', async () => {
-      const res = await request(app.getHttpServer() as App)
-        .patch(`/api/v1/inventory/${inventoryId}/reserve`)
-        .set(auth())
-        .send({ quantity: 5 })
-        .expect(200);
-
-      expect(res.body.data.reservedQuantity).toBe(5);
-    });
-
-    it('PATCH /inventory/:id/restock — restock', async () => {
-      const res = await request(app.getHttpServer() as App)
-        .patch(`/api/v1/inventory/${inventoryId}/restock`)
-        .set(auth())
-        .send({ quantity: 50 })
-        .expect(200);
-
-      expect(res.body.data.quantityOnHand).toBe(150);
-    });
-
-    it('PATCH /inventory/:id — update', async () => {
-      await request(app.getHttpServer() as App)
-        .patch(`/api/v1/inventory/${inventoryId}`)
-        .set(auth())
-        .send({ reorderLevel: 20 })
-        .expect(200);
-    });
-
     afterAll(async () => {
-      await request(app.getHttpServer() as App)
-        .delete(`/api/v1/inventory/${inventoryId}`)
-        .set(auth());
       await request(app.getHttpServer() as App)
         .delete(`/api/v1/product/${productId}`)
         .set(auth());

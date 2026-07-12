@@ -1,14 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Shipment } from './shipment.entity';
 import { CreateShipmentDto, UpdateShipmentDto } from './dtos/index';
-import { Inventory } from '../inventory/inventory.entity';
-import { SalesOrder } from '../sales-order/sales-order.entity';
-import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
-import { ProductionSimulationService } from '../production-simulation/production-simulation.service';
-import { OrderItem } from '../order-item/order-item.entity';
-import { Item } from '../../common/entities/item.entity';
+import { ShipmentArrivedEvent } from './events/shipment-arrived.event';
 
 @Injectable()
 export class ShipmentService {
@@ -17,25 +13,18 @@ export class ShipmentService {
   constructor(
     @InjectRepository(Shipment)
     private readonly shipmentRepository: Repository<Shipment>,
-    @InjectRepository(Inventory)
-    private readonly inventoryRepository: Repository<Inventory>,
-    @InjectRepository(SalesOrder)
-    private readonly salesOrderRepository: Repository<SalesOrder>,
-    @InjectRepository(PurchaseOrder)
-    private readonly purchaseOrderRepository: Repository<PurchaseOrder>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemRepository: Repository<OrderItem>,
-    @InjectRepository(Item)
-    private readonly itemRepository: Repository<Item>,
-    private readonly productionSimulationService: ProductionSimulationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createShipmentDto: CreateShipmentDto): Promise<Shipment> {
     const shipment = this.shipmentRepository.create(createShipmentDto);
     const saved = await this.shipmentRepository.save(shipment);
+
+    // Start simulation in background
     this.simulateShipment(saved.id).catch((err) =>
       this.logger.error(`Shipment simulation failed for ${saved.id}`, err),
     );
+
     return saved;
   }
 
@@ -44,12 +33,16 @@ export class ShipmentService {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
+      relations: { order: { orderItems: { item: true } } },
     });
     return { data, total, page, limit };
   }
 
   async findOne(id: string): Promise<Shipment> {
-    const shipment = await this.shipmentRepository.findOne({ where: { id } });
+    const shipment = await this.shipmentRepository.findOne({
+      where: { id },
+      relations: { order: { orderItems: { item: true } } },
+    });
     if (!shipment) throw new NotFoundException('Shipment not found');
     return shipment;
   }
@@ -67,62 +60,17 @@ export class ShipmentService {
 
   private async simulateShipment(shipmentId: string): Promise<void> {
     this.logger.log(`Starting shipment simulation for ${shipmentId}`);
+
     await new Promise((r) => setTimeout(r, 5000));
     await this.updateStatus(shipmentId, 'SENDING');
     this.logger.log(`Shipment ${shipmentId} status: SENDING`);
+
     await new Promise((r) => setTimeout(r, 5000));
     await this.updateStatus(shipmentId, 'ARRIVED');
     this.logger.log(`Shipment ${shipmentId} status: ARRIVED`);
 
-    const shipment = await this.findOne(shipmentId);
-    if (shipment.orderType === 'PURCHASE') {
-      await this.handlePurchaseArrival(shipment);
-    } else if (shipment.orderType === 'SALES') {
-      await this.handleSalesArrival(shipment);
-    }
-  }
-
-  private async handlePurchaseArrival(shipment: Shipment): Promise<void> {
-    const po = await this.purchaseOrderRepository.findOne({
-      where: { orderId: shipment.orderId },
-      relations: ['order'],
-    });
-    if (!po) return;
-
-    const inventories = await this.inventoryRepository.find({
-      where: { warehouseId: po.order.warehouseId },
-    });
-    for (const inv of inventories) {
-      inv.quantityOnHand += 10;
-      await this.inventoryRepository.save(inv);
-      this.logger.log(`Restocked inventory ${inv.id} with +10 units`);
-    }
-    await this.productionSimulationService.executeForWarehouse(po.order.warehouseId);
-  }
-
-  private async handleSalesArrival(shipment: Shipment): Promise<void> {
-    const so = await this.salesOrderRepository.findOne({
-      where: { orderId: shipment.orderId },
-      relations: ['order'],
-    });
-    if (!so || so.order.status === 'SHIPPED') return;
-
-    await this.salesOrderRepository.manager.update(
-      'ORDER',
-      { id: shipment.orderId },
-      { status: 'SHIPPED' },
-    );
-    this.logger.log(`Sales order ${shipment.orderId} marked as SHIPPED`);
-
-    const orderItems = await this.orderItemRepository.find({
-      where: { orderType: 'SALES', orderId: shipment.orderId },
-    });
-    for (const oi of orderItems) {
-      if (oi.itemId) {
-        await this.itemRepository.increment({ id: oi.itemId }, 'soldQty', oi.quantity);
-        this.logger.log(`Incremented soldQty for item ${oi.itemId} by ${oi.quantity}`);
-      }
-    }
+    // Fire event — handler processes inventory creation in transaction
+    this.eventEmitter.emit('shipment.arrived', new ShipmentArrivedEvent(shipmentId));
   }
 
   private async updateStatus(id: string, status: string): Promise<void> {

@@ -118,21 +118,33 @@ export class SalesOrdersController {
     @Body() dto: CreateOrderItemDto,
     @Res() res: any,
   ) {
-    const item = await this.orderItemService.create({ ...dto, orderType: 'SALES', orderId: id });
-    return this.responsesService.code('created').message('Item added').sendResponse(res, item);
+    const item = await this.orderItemService.create({
+      ...dto,
+      orderType: 'SALES',
+    });
+    return this.responsesService
+      .code('created')
+      .message('Item added')
+      .sendResponse(res, item);
   }
 
   @Get(':id/items')
   @Roles('Admin', 'Employee', 'Consumer')
   async getItems(@Param('id') id: string, @Res() res: any) {
     const items = await this.orderItemService.findByOrderId('SALES', id);
-    return this.responsesService.code('success').message('Items retrieved').sendResponse(res, items);
+    return this.responsesService
+      .code('success')
+      .message('Items retrieved')
+      .sendResponse(res, items);
   }
 
   @Delete(':id/items/:itemId')
   @Roles('Admin', 'Consumer')
   async removeItem(@Param('itemId') itemId: string, @Res() res: any) {
     await this.orderItemService.remove(itemId);
-    return this.responsesService.code('success').message('Item removed').sendResponse(res, null);
+    return this.responsesService
+      .code('success')
+      .message('Item removed')
+      .sendResponse(res, null);
   }
 }
