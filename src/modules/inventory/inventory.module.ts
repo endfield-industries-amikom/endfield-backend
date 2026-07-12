@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Inventory } from './inventory.entity';
 import { InventoryService } from './inventory.service';
@@ -18,7 +18,7 @@ import { ProductionSimulationModule } from '../production-simulation/production-
       Inventory, Shipment, PurchaseOrder, SalesOrder,
       OrderItem, Item, Warehouse,
     ]),
-    forwardRef(() => ProductionSimulationModule),
+    ProductionSimulationModule,
   ],
   providers: [InventoryService, InventoryEventHandler],
   controllers: [InventoryController],

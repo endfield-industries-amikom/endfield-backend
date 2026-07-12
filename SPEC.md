@@ -167,10 +167,16 @@ Relations: `@ManyToOne(() => Order) order`
 
 ### ProductionSchematic (`PRODUCTION_SCHEMATIC`)
 `production_schematic_id` UUID PK, `name`, `type`, `inputs` JSON (string[] — item IDs),
-`inputQty` JSON (number[]), `duration` int, `output_qty` int, `output_item_id` FK→ITEM, timestamps
+`inputQty` JSON (number[]), `duration` int, `output_qty` int, `output_item_id` FK→ITEM,
+`active` (default false), `warehouse_ids` JSON (string[] — warehouse UUIDs), timestamps
 
-### ProductionSimulation (`PRODUCTION_SIMULATION`)
-`production_simulation_id` UUID PK, `schematic_id` FK, `warehouse_id` FK, `active` boolean, timestamps
+### ProductionExecutionHistory (`PRODUCTION_EXECUTION_HISTORY`)
+`execution_id` UUID PK, `schematic_id` FK→ProductionSchematic, `warehouse_id` FK→Warehouse,
+`started_at`, `finished_at`, `status` (RUNNING/COMPLETED/FAILED), `error`, `created_at`
+
+> ProductionSimulation is now backend-only — no entity table. Schematics execute automatically
+> when a PURCHASE shipment arrives, filtered by matching `warehouseIds`. Each execution logged
+> in ProductionExecutionHistory.
 
 ### Supplier (`SUPPLIER`)
 `id` UUID PK, `name`, `code` UNIQUE, `contact_person`, `email`, `phone`, `address`, timestamps
@@ -282,6 +288,7 @@ On ARRIVED, emits `shipment.arrived` event via EventEmitter2.
 3. If capacity exceeded → set shipment `FAILED` with `statusMessage`
 4. Else → upsert Inventory records per OrderItem, increment `warehouse.currentLoad`
 5. Outside transaction → trigger `ProductionSimulationService.executeForWarehouse()`
+   → Runs all active schematics matching the warehouse, logs each in ProductionExecutionHistory
 
 **SALES arrival:**
 1. Update Order `status = SHIPPED`

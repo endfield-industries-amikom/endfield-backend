@@ -16,6 +16,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { ProductionSchematicService } from './production-schematic.service';
+import { ProductionExecutionHistoryService } from './production-execution-history.service';
 import {
   CreateProductionSchematicDto,
   UpdateProductionSchematicDto,
@@ -28,6 +29,7 @@ import {
 export class ProductionSchematicController {
   constructor(
     private readonly schematicService: ProductionSchematicService,
+    private readonly historyService: ProductionExecutionHistoryService,
     private readonly responsesService: ResponsesService<any>,
   ) {}
 
@@ -103,5 +105,25 @@ export class ProductionSchematicController {
       .code('success')
       .message('Production completed successfully')
       .sendResponse(res, schematic);
+  }
+
+  @Get(':id/history')
+  @Roles('Admin', 'Employee')
+  async getHistory(@Param('id') id: string, @Res() res: any) {
+    const data = await this.historyService.findBySchematic(id);
+    return this.responsesService
+      .code('success')
+      .message('Production history retrieved successfully')
+      .sendResponse(res, data);
+  }
+
+  @Get('warehouse/:warehouseId/history')
+  @Roles('Admin', 'Employee')
+  async getWarehouseHistory(@Param('warehouseId') warehouseId: string, @Res() res: any) {
+    const data = await this.historyService.findByWarehouse(warehouseId);
+    return this.responsesService
+      .code('success')
+      .message('Warehouse production history retrieved successfully')
+      .sendResponse(res, data);
   }
 }

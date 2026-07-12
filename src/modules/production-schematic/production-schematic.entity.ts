@@ -47,6 +47,14 @@ export class ProductionSchematic {
   @JoinColumn({ name: 'output_item_id' })
   outputItem: Item;
 
+  @ApiProperty({ default: false })
+  @Column({ default: false })
+  active: boolean;
+
+  @ApiProperty({ type: [String] })
+  @Column({ name: 'warehouse_ids', type: 'simple-json', nullable: true })
+  warehouseIds: string[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

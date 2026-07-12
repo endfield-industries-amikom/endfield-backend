@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OnEvent } from '@nestjs/event-emitter';
 import { DataSource, Repository } from 'typeorm';
@@ -9,6 +9,7 @@ import { SalesOrder } from '../sales-order/sales-order.entity';
 import { Inventory } from './inventory.entity';
 import { OrderItem } from '../order-item/order-item.entity';
 import { Item } from '../../common/entities/item.entity';
+import { Order } from '../../common/entities/order.entity';
 import { Warehouse } from '../warehouse/warehouse.entity';
 import { ProductionSimulationService } from '../production-simulation/production-simulation.service';
 
@@ -32,7 +33,6 @@ export class InventoryEventHandler {
     @InjectRepository(Warehouse)
     private readonly warehouseRepository: Repository<Warehouse>,
     private readonly dataSource: DataSource,
-    @Inject(forwardRef(() => ProductionSimulationService))
     private readonly productionSimulationService: ProductionSimulationService,
   ) {}
 
@@ -45,6 +45,14 @@ export class InventoryEventHandler {
       this.logger.warn(`Shipment ${event.shipmentId} not found`);
       return;
     }
+
+    // Update order status to ARRIVED
+    await this.dataSource.manager.update(
+      Order,
+      { id: shipment.orderId },
+      { status: 'ARRIVED' },
+    );
+    this.logger.log(`Order ${shipment.orderId} status: ARRIVED`);
 
     if (shipment.orderType === 'PURCHASE') {
       await this.handlePurchaseArrival(shipment);

@@ -1426,6 +1426,8 @@ Standard CRUD. POST requires: `{ name, code (unique), email?, phone?, address? }
         "duration": 60,
         "outputQty": 1,
         "outputItemId": "uuid",
+        "active": false,
+        "warehouseIds": ["uuid", "uuid"],
         "createdAt": "ISO date",
         "updatedAt": "ISO date",
         "outputItem": { "id": "uuid", "name": "string", "sku": "string", "...": "..." }
@@ -1461,7 +1463,9 @@ Standard CRUD. POST requires: `{ name, code (unique), email?, phone?, address? }
   "inputQty": [2, 1],
   "duration": 60,
   "outputQty": 1,
-  "outputItemId": "uuid (required)"
+  "outputItemId": "uuid (required)",
+  "active": false,
+  "warehouseIds": ["uuid", "uuid"]
 }
 ```
 
@@ -1482,6 +1486,45 @@ Execute the schematic: deduct input items from inventory, add output to inventor
 **Auth:** `Authorization: Bearer <jwt>` (Admin, Employee)
 
 **Response** `200`: `{ "statusCode": 200, "message": "Production executed", "data": { ...schematic } }`
+
+---
+
+### `GET /production-schematic/:id/history`
+
+Get execution history for a specific schematic.
+
+**Auth:** `Authorization: Bearer <jwt>` (Admin, Employee)
+
+**Response** `200`:
+```json
+{
+  "statusCode": 200,
+  "message": "Production history retrieved successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "schematicId": "uuid",
+      "warehouseId": "uuid",
+      "startedAt": "ISO date",
+      "finishedAt": "ISO date",
+      "status": "COMPLETED",
+      "error": null,
+      "createdAt": "ISO date",
+      "warehouse": { "id": "uuid", "name": "string", "code": "string" }
+    }
+  ]
+}
+```
+
+---
+
+### `GET /production-schematic/warehouse/:warehouseId/history`
+
+Get execution history for all schematics run at a specific warehouse.
+
+**Auth:** `Authorization: Bearer <jwt>` (Admin, Employee)
+
+**Response** `200`: Same structure as above, with `schematic` relation instead of `warehouse`.
 
 ---
 

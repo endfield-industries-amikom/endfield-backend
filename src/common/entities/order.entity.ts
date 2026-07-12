@@ -2,11 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { OrderItem } from '../../modules/order-item/order-item.entity';
+import { Warehouse } from '../../modules/warehouse/warehouse.entity';
 
 @Entity('ORDER')
 export class Order {
@@ -15,6 +18,10 @@ export class Order {
 
   @Column({ name: 'warehouse_id' })
   warehouseId: string;
+
+  @ManyToOne(() => Warehouse)
+  @JoinColumn({ name: 'warehouse_id' })
+  warehouse: Warehouse;
 
   @Column({
     name: 'order_date',

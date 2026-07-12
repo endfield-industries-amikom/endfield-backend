@@ -49,7 +49,7 @@ export class SalesOrdersService {
 
       return manager.findOneOrFail(SalesOrder, {
         where: { orderId: savedOrder.id },
-        relations: { order: { orderItems: { item: true } }, customer: true },
+        relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
       });
     });
   }
@@ -70,7 +70,7 @@ export class SalesOrdersService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: { order: { orderItems: { item: true } }, customer: true },
+      relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
     });
     return { data, total, page, limit };
   }
@@ -78,7 +78,7 @@ export class SalesOrdersService {
   async findOne(orderId: string) {
     const so = await this.salesOrderRepository.findOne({
       where: { orderId },
-      relations: { order: { orderItems: { item: true } }, customer: true },
+      relations: { order: { orderItems: { item: true }, warehouse: true }, customer: true },
     });
     if (!so) throw new NotFoundException('Sales order not found');
     return so;

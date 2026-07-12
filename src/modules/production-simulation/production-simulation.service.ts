@@ -1,128 +1,54 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProductionSimulation } from './production-simulation.entity';
-import {
-  CreateProductionSimulationDto,
-  UpdateProductionSimulationDto,
-} from './dtos';
+import { ProductionSchematic } from '../production-schematic/production-schematic.entity';
 import { ProductionSchematicService } from '../production-schematic/production-schematic.service';
+import { ProductionExecutionHistoryService } from '../production-schematic/production-execution-history.service';
 
 @Injectable()
 export class ProductionSimulationService {
   private readonly logger = new Logger(ProductionSimulationService.name);
 
   constructor(
-    @InjectRepository(ProductionSimulation)
-    private readonly simulationRepository: Repository<ProductionSimulation>,
+    @InjectRepository(ProductionSchematic)
+    private readonly schematicRepository: Repository<ProductionSchematic>,
     private readonly productionSchematicService: ProductionSchematicService,
+    private readonly historyService: ProductionExecutionHistoryService,
   ) {}
 
-  async create(
-    dto: CreateProductionSimulationDto,
-  ): Promise<ProductionSimulation> {
-    const simulation = this.simulationRepository.create(dto);
-    return this.simulationRepository.save(simulation);
-  }
-
-  async findAll(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: ProductionSimulation[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const [data, total] = await this.simulationRepository.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-      relations: ['schematic', 'warehouse'],
-      order: { createdAt: 'DESC' },
-    });
-    return { data, total, page, limit };
-  }
-
-  async findOne(id: string): Promise<ProductionSimulation> {
-    const simulation = await this.simulationRepository.findOne({
-      where: { id },
-      relations: ['schematic', 'warehouse'],
-    });
-    if (!simulation) {
-      throw new NotFoundException('Production simulation not found');
-    }
-    return simulation;
-  }
-
-  async findByWarehouse(
-    warehouseId: string,
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: ProductionSimulation[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const [data, total] = await this.simulationRepository.findAndCount({
-      where: { warehouseId },
-      skip: (page - 1) * limit,
-      take: limit,
-      relations: ['schematic', 'warehouse'],
-      order: { createdAt: 'DESC' },
-    });
-    return { data, total, page, limit };
-  }
-
-  async update(
-    id: string,
-    dto: UpdateProductionSimulationDto,
-  ): Promise<ProductionSimulation> {
-    const simulation = await this.findOne(id);
-    Object.assign(simulation, dto);
-    return this.simulationRepository.save(simulation);
-  }
-
-  async toggle(id: string): Promise<ProductionSimulation> {
-    const simulation = await this.findOne(id);
-    simulation.active = !simulation.active;
-    return this.simulationRepository.save(simulation);
-  }
-
-  async remove(id: string): Promise<void> {
-    const result = await this.simulationRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Production simulation not found');
-    }
-  }
-
   async executeForWarehouse(warehouseId: string): Promise<void> {
-    this.logger.log(
-      `Executing production simulations for warehouse ${warehouseId}`,
+    this.logger.log(`Executing production schematics for warehouse ${warehouseId}`);
+
+    const schematics = await this.schematicRepository.find({
+      where: { active: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    const matching = schematics.filter(
+      (s) => s.warehouseIds && s.warehouseIds.includes(warehouseId),
     );
 
-    const activeSimulations = await this.simulationRepository.find({
-      where: { warehouseId, active: true },
-      relations: ['schematic'],
-    });
-
-    if (activeSimulations.length === 0) {
-      this.logger.log(`No active simulations for warehouse ${warehouseId}`);
+    if (matching.length === 0) {
+      this.logger.log(`No active schematics for warehouse ${warehouseId}`);
       return;
     }
 
-    for (const simulation of activeSimulations) {
+    for (const schematic of matching) {
+      const history = await this.historyService.create({
+        schematicId: schematic.id,
+        warehouseId,
+      });
+
       try {
-        await this.productionSchematicService.produce(
-          simulation.schematicId,
-        );
+        await this.productionSchematicService.produce(schematic.id);
+        await this.historyService.markCompleted(history.id);
         this.logger.log(
-          `Production simulation ${simulation.id} executed successfully for schematic ${simulation.schematicId}`,
+          `Schematic "${schematic.name}" (${schematic.id}) executed for warehouse ${warehouseId}`,
         );
       } catch (error) {
-        this.logger.error(
-          `Production simulation ${simulation.id} failed: ${(error as Error).message}`,
-        );
+        const msg = (error as Error).message;
+        await this.historyService.markFailed(history.id, msg);
+        this.logger.error(`Schematic "${schematic.name}" failed: ${msg}`);
       }
     }
   }

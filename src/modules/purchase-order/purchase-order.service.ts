@@ -47,7 +47,7 @@ export class PurchaseOrderService {
 
       return manager.findOneOrFail(PurchaseOrder, {
         where: { orderId: savedOrder.id },
-        relations: { order: { orderItems: { item: true } }, supplier: true },
+        relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
       });
     });
   }
@@ -68,7 +68,7 @@ export class PurchaseOrderService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: { order: { orderItems: { item: true } }, supplier: true },
+      relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
     });
     return { data, total, page, limit };
   }
@@ -76,7 +76,7 @@ export class PurchaseOrderService {
   async findOne(orderId: string): Promise<PurchaseOrder> {
     const po = await this.poRepository.findOne({
       where: { orderId },
-      relations: { order: { orderItems: { item: true } }, supplier: true },
+      relations: { order: { orderItems: { item: true }, warehouse: true }, supplier: true },
     });
     if (!po) throw new NotFoundException('Purchase order not found');
     return po;
