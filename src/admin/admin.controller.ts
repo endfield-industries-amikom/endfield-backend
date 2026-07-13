@@ -44,11 +44,13 @@ export class AdminController {
   async listUsers(
     @Query('page') page: string,
     @Query('limit') limit: string,
+    @Query('roleName') roleName: string,
     @Res() res: any,
   ) {
     const result = await this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 10,
+      roleName || 'Employee',
     );
     return this.responsesService
       .code('success')

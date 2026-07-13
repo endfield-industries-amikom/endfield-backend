@@ -175,14 +175,14 @@ export class InventoryEventHandler {
           where: { orderId },
           relations: ['order'],
         });
-        if (!so || so.order.status === 'SHIPPED') return;
+        if (!so || so.order.status === 'ARRIVED') return;
 
         await manager.update(
           'ORDER',
           { id: orderId },
-          { status: 'SHIPPED' },
+          { status: 'ARRIVED' },
         );
-        this.logger.log(`Sales order ${orderId} marked as SHIPPED`);
+        this.logger.log(`Sales order ${orderId} marked as ARRIVED`);
 
         const orderItems = await manager.find(OrderItem, {
           where: { orderType: 'SALES', orderId },

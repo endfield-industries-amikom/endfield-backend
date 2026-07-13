@@ -114,7 +114,7 @@ export class SalesOrdersService {
   async confirm(orderId: string) {
     const so = await this.findOne(orderId);
     if (so.order.status !== 'PENDING') {
-      return so;
+      throw new BadRequestException('Order can only be confirmed from PENDING status');
     }
     await this.orderRepository.update(so.orderId, { status: 'CONFIRMED' });
     return this.findOne(orderId);
@@ -122,7 +122,9 @@ export class SalesOrdersService {
 
   async ship(orderId: string) {
     const so = await this.findOne(orderId);
-    if (so.order.status === 'SHIPPED') return so;
+    if (so.order.status !== 'CONFIRMED') {
+      throw new BadRequestException('Order must be CONFIRMED before shipping');
+    }
 
     // Check inventory availability before shipping
     const orderItems = await this.orderItemRepository.find({
@@ -148,6 +150,20 @@ export class SalesOrdersService {
 
     for (const oi of orderItems) {
       await this.itemRepository.increment({ id: oi.itemId }, 'soldQty', oi.quantity);
+
+      // Decrement inventory
+      const inventories = await this.inventoryRepository.find({
+        where: { itemId: oi.itemId },
+        order: { quantityOnHand: 'DESC' },
+      });
+      let remaining = oi.quantity;
+      for (const inv of inventories) {
+        if (remaining <= 0) break;
+        const deduct = Math.min(inv.quantityOnHand, remaining);
+        inv.quantityOnHand -= deduct;
+        remaining -= deduct;
+        await this.inventoryRepository.save(inv);
+      }
     }
     return this.findOne(orderId);
   }

@@ -73,6 +73,7 @@ export class ProductsService {
   async getTopSelling(limit: number = 10) {
     return this.itemRepository.find({
       order: { soldQty: 'DESC' },
+      where: { isSellable: true },
       take: limit,
     });
   }
