@@ -42,7 +42,12 @@ export class ProductsService {
       id: savedItem.id,
       type,
     });
-    return this.productRepository.save(product);
+    await this.productRepository.save(product);
+
+    return this.productRepository.findOneOrFail({
+      where: { id: savedItem.id },
+      relations: ['item'],
+    });
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -60,8 +65,9 @@ export class ProductsService {
 
   async remove(id: string) {
     const product = await this.findOne(id);
+    const itemId = product.id;
     await this.productRepository.remove(product);
-    await this.itemRepository.delete(product.id);
+    await this.itemRepository.delete(itemId);
   }
 
   async getTopSelling(limit: number = 10) {

@@ -38,7 +38,12 @@ export class MaterialsService {
     const savedItem = await this.itemRepository.save(item);
 
     const material = this.materialRepository.create({ id: savedItem.id });
-    return this.materialRepository.save(material);
+    await this.materialRepository.save(material);
+
+    return this.materialRepository.findOneOrFail({
+      where: { id: savedItem.id },
+      relations: ['item'],
+    });
   }
 
   async update(id: string, dto: UpdateMaterialDto) {
@@ -49,7 +54,8 @@ export class MaterialsService {
 
   async remove(id: string) {
     const material = await this.findOne(id);
+    const itemId = material.id;
     await this.materialRepository.remove(material);
-    await this.itemRepository.delete(material.id);
+    await this.itemRepository.delete(itemId);
   }
 }
