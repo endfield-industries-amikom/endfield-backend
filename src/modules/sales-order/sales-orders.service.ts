@@ -111,6 +111,15 @@ export class SalesOrdersService {
     return this.findOne(orderId);
   }
 
+  async confirm(orderId: string) {
+    const so = await this.findOne(orderId);
+    if (so.order.status !== 'PENDING') {
+      return so;
+    }
+    await this.orderRepository.update(so.orderId, { status: 'CONFIRMED' });
+    return this.findOne(orderId);
+  }
+
   async ship(orderId: string) {
     const so = await this.findOne(orderId);
     if (so.order.status === 'SHIPPED') return so;

@@ -81,6 +81,16 @@ export class SalesOrdersController {
       .sendResponse(res, salesOrder);
   }
 
+  @Post(':id/confirm')
+  @Roles('Consumer')
+  async confirm(@Param('id') id: string, @Res() res: any) {
+    const salesOrder = await this.salesOrdersService.confirm(id);
+    return this.responsesService
+      .code('success')
+      .message('Sales order confirmed successfully')
+      .sendResponse(res, salesOrder);
+  }
+
   @Post(':orderId/ship')
   @Roles('Admin', 'Employee')
   async ship(@Param('orderId') orderId: string, @Res() res: any) {
