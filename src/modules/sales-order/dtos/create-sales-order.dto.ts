@@ -1,14 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsArray, IsDateString, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateOrderItemDto } from '../../order-item/dtos';
 
 export class CreateSalesOrderDto {
   @ApiProperty()
   @IsUUID()
-  customerId: string;
-
-  @ApiProperty()
-  @IsUUID()
-  warehouseId: string;
+  regionId: string;
 
   @ApiProperty({ required: false })
   @IsDateString()
@@ -30,4 +28,11 @@ export class CreateSalesOrderDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ required: false, type: [CreateOrderItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items?: CreateOrderItemDto[];
 }

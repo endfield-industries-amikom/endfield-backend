@@ -1,10 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateShipmentDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'PURCHASE or SALES' })
   @IsString()
-  poId: string;
+  @IsIn(['PURCHASE', 'SALES'])
+  orderType: string;
+
+  @ApiProperty()
+  @IsUUID()
+  orderId: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

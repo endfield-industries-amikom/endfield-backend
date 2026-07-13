@@ -35,12 +35,13 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  async findAllPaginated(page = 1, limit = 10) {
+  async findAllPaginated(page = 1, limit = 10, roleName?: string) {
     return this.userRepository.findAndCount({
       relations: ['role'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
+      where: roleName ? { role: { roleName } } : undefined,
     });
   }
 

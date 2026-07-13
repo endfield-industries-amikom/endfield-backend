@@ -11,12 +11,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { PurchaseOrderService } from './purchase-order.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dtos/index';
+import { OrderItemService } from '../order-item/order-item.service';
+import { CreateOrderItemDto } from '../order-item/dtos';
 
 @ApiTags('Purchase Orders')
 @Controller('purchase-order')
@@ -26,6 +28,7 @@ export class PurchaseOrderController {
   constructor(
     private readonly poService: PurchaseOrderService,
     private readonly responsesService: ResponsesService<any>,
+    private readonly orderItemService: OrderItemService,
   ) {}
 
   @Post()
@@ -44,13 +47,15 @@ export class PurchaseOrderController {
   @Get()
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
   @Roles('Admin', 'Employee')
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('status') status: string,
     @Res() res: any,
   ) {
-    const result = await this.poService.findAll(page, limit);
+    const result = await this.poService.findAll(page, limit, status);
     return this.responsesService
       .code('success')
       .message('Purchase orders retrieved successfully')
@@ -99,5 +104,42 @@ export class PurchaseOrderController {
       .code('success')
       .message('Purchase order approved successfully')
       .sendResponse(res, po);
+  }
+
+  @Post(':id/items')
+  @Roles('Admin', 'Employee')
+  async addItem(
+    @Param('id') id: string,
+    @Body() dto: CreateOrderItemDto,
+    @Res() res: any,
+  ) {
+    const item = await this.orderItemService.create({
+      ...dto,
+      orderType: 'PURCHASE',
+    });
+    return this.responsesService
+      .code('created')
+      .message('Item added')
+      .sendResponse(res, item);
+  }
+
+  @Get(':id/items')
+  @Roles('Admin', 'Employee')
+  async getItems(@Param('id') id: string, @Res() res: any) {
+    const items = await this.orderItemService.findByOrderId('PURCHASE', id);
+    return this.responsesService
+      .code('success')
+      .message('Items retrieved')
+      .sendResponse(res, items);
+  }
+
+  @Delete(':id/items/:itemId')
+  @Roles('Admin', 'Employee')
+  async removeItem(@Param('itemId') itemId: string, @Res() res: any) {
+    await this.orderItemService.remove(itemId);
+    return this.responsesService
+      .code('success')
+      .message('Item removed')
+      .sendResponse(res, null);
   }
 }

@@ -7,19 +7,22 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
+import { Order } from '../../common/entities/order.entity';
 
 @Entity('SHIPMENT')
 export class Shipment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'po_id' })
-  poId: string;
+  @Column({ name: 'order_type' })
+  orderType: string;
 
-  @ManyToOne(() => PurchaseOrder)
-  @JoinColumn({ name: 'po_id' })
-  purchaseOrder: PurchaseOrder;
+  @Column({ name: 'order_id' })
+  orderId: string;
+
+  @ManyToOne(() => Order)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 
   @Column({ nullable: true })
   carrier: string;
@@ -35,6 +38,9 @@ export class Shipment {
 
   @Column({ default: 'PENDING' })
   status: string;
+
+  @Column({ name: 'status_message', type: 'text', nullable: true })
+  statusMessage: string;
 
   @Column({ nullable: true })
   notes: string;

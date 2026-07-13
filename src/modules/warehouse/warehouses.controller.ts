@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
@@ -95,5 +95,15 @@ export class WarehousesController {
       .code('success')
       .message('Warehouse deleted successfully')
       .sendResponse(res, null);
+  }
+
+  @Get(':id/inventory')
+  @Roles('Admin', 'Employee')
+  async getInventory(@Param('id') id: string, @Res() res: any) {
+    const data = await this.warehousesService.findInventory(id);
+    return this.responsesService
+      .code('success')
+      .message('Warehouse inventory retrieved successfully')
+      .sendResponse(res, data);
   }
 }

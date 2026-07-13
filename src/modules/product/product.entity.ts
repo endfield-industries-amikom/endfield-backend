@@ -1,34 +1,21 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  JoinColumn,
+  OneToOne,
+  PrimaryColumn,
 } from 'typeorm';
+import { Item } from '../../common/entities/item.entity';
 
 @Entity('PRODUCT')
 export class Product {
-  @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
+  @PrimaryColumn({ name: 'item_id' })
   id: string;
 
-  @Column({ length: 255 })
-  name: string;
+  @OneToOne(() => Item)
+  @JoinColumn({ name: 'item_id' })
+  item: Item;
 
-  @Column({ length: 100, unique: true })
-  sku: string;
-
-  @Column({ type: 'text', nullable: true })
-  description: string;
-
-  @Column({ length: 100, nullable: true })
-  category: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'unit_price' })
-  unitPrice: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @Column({ length: 50, default: 'product' })
+  type: string;
 }

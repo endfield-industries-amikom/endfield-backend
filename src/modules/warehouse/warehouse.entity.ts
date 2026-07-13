@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Region } from '../region/region.entity';
 
 @Entity('WAREHOUSE')
 export class Warehouse {
@@ -19,6 +22,19 @@ export class Warehouse {
 
   @Column({ nullable: true })
   address: string;
+
+  @Column({ name: 'region_id', nullable: true })
+  regionId: string;
+
+  @ManyToOne(() => Region)
+  @JoinColumn({ name: 'region_id' })
+  region: Region;
+
+  @Column({ name: 'max_capacity', default: 10000 })
+  maxCapacity: number;
+
+  @Column({ name: 'current_load', default: 0 })
+  currentLoad: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

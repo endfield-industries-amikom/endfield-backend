@@ -1,18 +1,23 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  OneToOne,
+  PrimaryColumn,
 } from 'typeorm';
+import { Order } from '../../common/entities/order.entity';
 import { Supplier } from '../supplier/supplier.entity';
+import { Warehouse } from '../warehouse/warehouse.entity';
 
 @Entity('PURCHASE_ORDER')
 export class PurchaseOrder {
-  @PrimaryGeneratedColumn('uuid', { name: 'po_id' })
-  id: string;
+  @PrimaryColumn({ name: 'order_id' })
+  orderId: string;
+
+  @OneToOne(() => Order)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 
   @Column({ name: 'supplier_id' })
   supplierId: string;
@@ -24,31 +29,7 @@ export class PurchaseOrder {
   @Column({ name: 'warehouse_id' })
   warehouseId: string;
 
-  @Column({
-    name: 'order_date',
-    type: 'date',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  orderDate: Date;
-
-  @Column({ default: 'PENDING' })
-  status: string;
-
-  @Column({
-    name: 'total_amount',
-    type: 'decimal',
-    precision: 12,
-    scale: 2,
-    default: 0,
-  })
-  totalAmount: number;
-
-  @Column({ nullable: true })
-  notes: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @ManyToOne(() => Warehouse)
+  @JoinColumn({ name: 'warehouse_id' })
+  warehouse: Warehouse;
 }

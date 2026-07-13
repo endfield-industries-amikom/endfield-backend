@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Warehouse } from './warehouse.entity';
+import { Inventory } from '../inventory/inventory.entity';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dtos';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class WarehousesService {
   constructor(
     @InjectRepository(Warehouse)
     private readonly warehouseRepository: Repository<Warehouse>,
+    @InjectRepository(Inventory)
+    private readonly inventoryRepository: Repository<Inventory>,
   ) {}
 
   async create(createWarehouseDto: CreateWarehouseDto) {
@@ -21,15 +24,17 @@ export class WarehousesService {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
+      relations: ['region'],
     });
     return { data, total, page, limit };
   }
 
   async findOne(id: string) {
-    const warehouse = await this.warehouseRepository.findOne({ where: { id } });
-    if (!warehouse) {
-      throw new NotFoundException('Warehouse not found');
-    }
+    const warehouse = await this.warehouseRepository.findOne({
+      where: { id },
+      relations: ['region'],
+    });
+    if (!warehouse) throw new NotFoundException('Warehouse not found');
     return warehouse;
   }
 
@@ -41,8 +46,15 @@ export class WarehousesService {
 
   async remove(id: string) {
     const result = await this.warehouseRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Warehouse not found');
-    }
+    if (result.affected === 0) throw new NotFoundException('Warehouse not found');
+  }
+
+  async findInventory(warehouseId: string) {
+    await this.findOne(warehouseId); // verify warehouse exists
+    return this.inventoryRepository.find({
+      where: { warehouseId },
+      relations: ['item'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

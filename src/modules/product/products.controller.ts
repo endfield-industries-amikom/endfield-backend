@@ -15,9 +15,10 @@ import { ProductsService } from './products.service';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { CreateProductDto, UpdateProductDto } from './dtos';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('Product')
 @Controller('product')
@@ -42,6 +43,17 @@ export class ProductsController {
     return this.responsesService
       .code('success')
       .message('Products retrieved successfully')
+      .sendResponse(res, data);
+  }
+
+
+  @Get('top-selling')
+  @Public()
+  async getTopSelling(@Res() res: any) {
+    const data = await this.productsService.getTopSelling();
+    return this.responsesService
+      .code('success')
+      .message('Top selling products retrieved successfully')
       .sendResponse(res, data);
   }
 

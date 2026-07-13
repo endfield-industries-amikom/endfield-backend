@@ -32,12 +32,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message:
         typeof message === 'string'
           ? message
-          : (message as Record<string, unknown>).message ?? 'Internal server error',
+          : ((message as Record<string, unknown>).message ??
+            'Internal server error'),
       timestamp: new Date().toISOString(),
       path: request.url,
     };
 
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status === (HttpStatus.INTERNAL_SERVER_ERROR as number)) {
       this.logger.error(
         `[${request.method}] ${request.url} - ${status}`,
         exception instanceof Error ? exception.stack : undefined,

@@ -10,4 +10,5 @@ export default () => ({
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
   PORT: process.env.PORT,
   UI_URL: process.env.UI_URL,
+  UPLOAD_DIR: process.env.UPLOAD_DIR || './images',
 });

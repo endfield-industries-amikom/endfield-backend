@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ResponsesService } from '../utils/responses/responses.service';
@@ -44,11 +44,13 @@ export class AdminController {
   async listUsers(
     @Query('page') page: string,
     @Query('limit') limit: string,
+    @Query('roleName') roleName: string,
     @Res() res: any,
   ) {
     const result = await this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 10,
+      roleName || 'Employee',
     );
     return this.responsesService
       .code('success')

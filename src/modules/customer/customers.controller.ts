@@ -7,16 +7,18 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dtos';
+import { UserDto } from 'src/auth/dtos/user.dto';
 
 @ApiTags('Customers')
 @Controller('customers')
@@ -55,6 +57,45 @@ export class CustomersController {
       .code('success')
       .message('Customers retrieved successfully')
       .sendResponse(res, result);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  async getMe(@Request() req: { user: UserDto }, @Res() res: any) {
+    const customer = await this.customersService.findByEmail(req.user.email);
+    return this.responsesService
+      .code('success')
+      .message('Customer profile retrieved successfully')
+      .sendResponse(res, customer);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  async updateMe(
+    @Request() req: { user: UserDto },
+    @Body() dto: UpdateCustomerDto,
+    @Res() res: any,
+  ) {
+    const customer = await this.customersService.findByEmail(req.user.email);
+    const updated = await this.customersService.updateMe(customer.id, dto);
+    return this.responsesService
+      .code('success')
+      .message('Customer profile updated successfully')
+      .sendResponse(res, updated);
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  async deleteMe(@Request() req: { user: UserDto }, @Res() res: any) {
+    const customer = await this.customersService.findByEmail(req.user.email);
+    await this.customersService.remove(customer.id);
+    return this.responsesService
+      .code('success')
+      .message('Customer account deleted successfully')
+      .sendResponse(res, null);
   }
 
   @Get(':id')

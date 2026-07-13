@@ -7,16 +7,19 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { SalesOrdersService } from './sales-orders.service';
 import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
+import { OrderItemService } from '../order-item/order-item.service';
+import { CreateOrderItemDto } from '../order-item/dtos';
 
 @ApiTags('Sales Orders')
 @Controller('sales-order')
@@ -26,16 +29,20 @@ export class SalesOrdersController {
   constructor(
     private readonly salesOrdersService: SalesOrdersService,
     private readonly responsesService: ResponsesService<any>,
+    private readonly orderItemService: OrderItemService,
   ) {}
 
   @Post()
   @Roles('Admin', 'Consumer')
   async create(
     @Body() createSalesOrderDto: CreateSalesOrderDto,
+    @Request() req: any,
     @Res() res: any,
   ) {
-    const salesOrder =
-      await this.salesOrdersService.create(createSalesOrderDto);
+    const salesOrder = await this.salesOrdersService.create(
+      createSalesOrderDto,
+      req.user.email,
+    );
     return this.responsesService
       .code('created')
       .message('Sales order created successfully')
@@ -46,14 +53,17 @@ export class SalesOrdersController {
   @Roles('Admin', 'Employee', 'Consumer')
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
   async findAll(
     @Query('page') page: string,
     @Query('limit') limit: string,
+    @Query('status') status: string,
     @Res() res: any,
   ) {
     const result = await this.salesOrdersService.findAll(
       Number(page) || 1,
       Number(limit) || 10,
+      status || undefined,
     );
     return this.responsesService
       .code('success')
@@ -71,8 +81,18 @@ export class SalesOrdersController {
       .sendResponse(res, salesOrder);
   }
 
+  @Post(':id/confirm')
+  @Roles('Consumer')
+  async confirm(@Param('id') id: string, @Res() res: any) {
+    const salesOrder = await this.salesOrdersService.confirm(id);
+    return this.responsesService
+      .code('success')
+      .message('Sales order confirmed successfully')
+      .sendResponse(res, salesOrder);
+  }
+
   @Post(':orderId/ship')
-  @Roles('Admin')
+  @Roles('Admin', 'Employee')
   async ship(@Param('orderId') orderId: string, @Res() res: any) {
     const salesOrder = await this.salesOrdersService.ship(orderId);
     return this.responsesService
@@ -82,7 +102,7 @@ export class SalesOrdersController {
   }
 
   @Patch(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'Consumer', 'Employee')
   async update(
     @Param('id') id: string,
     @Body() updateSalesOrderDto: UpdateSalesOrderDto,
@@ -99,12 +119,49 @@ export class SalesOrdersController {
   }
 
   @Delete(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'Consumer')
   async remove(@Param('id') id: string, @Res() res: any) {
     await this.salesOrdersService.remove(id);
     return this.responsesService
       .code('success')
       .message('Sales order deleted successfully')
+      .sendResponse(res, null);
+  }
+
+  @Post(':id/items')
+  @Roles('Admin', 'Consumer')
+  async addItem(
+    @Param('id') id: string,
+    @Body() dto: CreateOrderItemDto,
+    @Res() res: any,
+  ) {
+    const item = await this.orderItemService.create({
+      ...dto,
+      orderType: 'SALES',
+    });
+    return this.responsesService
+      .code('created')
+      .message('Item added')
+      .sendResponse(res, item);
+  }
+
+  @Get(':id/items')
+  @Roles('Admin', 'Employee', 'Consumer')
+  async getItems(@Param('id') id: string, @Res() res: any) {
+    const items = await this.orderItemService.findByOrderId('SALES', id);
+    return this.responsesService
+      .code('success')
+      .message('Items retrieved')
+      .sendResponse(res, items);
+  }
+
+  @Delete(':id/items/:itemId')
+  @Roles('Admin', 'Consumer')
+  async removeItem(@Param('itemId') itemId: string, @Res() res: any) {
+    await this.orderItemService.remove(itemId);
+    return this.responsesService
+      .code('success')
+      .message('Item removed')
       .sendResponse(res, null);
   }
 }

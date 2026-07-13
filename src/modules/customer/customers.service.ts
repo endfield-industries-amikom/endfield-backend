@@ -45,4 +45,26 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
   }
+
+  async findByEmail(email: string) {
+    const customer = await this.customerRepository.findOne({
+      where: { email },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+    return customer;
+  }
+
+  async updateMe(id: string, updateCustomerDto: UpdateCustomerDto) {
+    // Only allow updating non-sensitive fields
+    const allowed = {
+      name: updateCustomerDto.name,
+      phone: updateCustomerDto.phone,
+      address: updateCustomerDto.address,
+    };
+    const customer = await this.findOne(id);
+    Object.assign(customer, allowed);
+    return this.customerRepository.save(customer);
+  }
 }

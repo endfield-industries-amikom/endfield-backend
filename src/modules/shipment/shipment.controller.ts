@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { ResponsesService } from 'src/utils/responses/responses.service';
@@ -41,13 +41,15 @@ export class ShipmentController {
   @Get()
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'order_type', required: false, type: String })
   @Roles('Admin', 'Employee', 'Consumer')
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('order_type') orderType: string = '',
     @Res() res: any,
   ) {
-    const result = await this.shipmentService.findAll(page, limit);
+    const result = await this.shipmentService.findAll(page, limit, orderType);
     return this.responsesService
       .code('success')
       .message('Shipments retrieved successfully')

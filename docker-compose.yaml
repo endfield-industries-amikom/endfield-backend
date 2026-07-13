@@ -5,14 +5,12 @@ services:
   backend:
     depends_on:
       - postgres
-    environment:
-      PORT: 3000
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: endfield
-      DB_PASSWORD: endfield
-      DB_NAME: endfield
-    image: 'endfield-industries-amikom/endfield-backend:0.0.1'
+    env_file:
+      - .env.development.local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: 'endfield-industries-amikom/endfield-backend:latest'
     networks:
       - endfield-network
     ports:

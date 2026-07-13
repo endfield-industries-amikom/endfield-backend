@@ -12,6 +12,9 @@ import { JwtService } from '@nestjs/jwt';
 import { SignInDto, TokenDto, UserDto } from './dtos';
 import { RegisterUserDto } from './dtos/register.dto';
 import { User } from 'src/users/users.entity';
+import { Customer } from 'src/modules/customer/customer.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -21,6 +24,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly encryptionService: EncryptionService,
     private jwtService: JwtService,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
   ) {}
 
   private async generateToken(user: User): Promise<TokenDto> {
@@ -58,6 +63,16 @@ export class AuthService {
           registerDto.password,
         ),
       });
+
+      // Auto-create a Customer record linked to this user
+      const customer = this.customerRepository.create({
+        name: user.username,
+        code: `CUST-${user.id.substring(0, 8)}`,
+        email: user.email,
+      });
+      await this.customerRepository.save(customer);
+      this.logger.log(`Customer auto-created for user ${user.id}`);
+
       return this.generateToken(user);
     } catch (error) {
       if (error instanceof BadRequestException) {

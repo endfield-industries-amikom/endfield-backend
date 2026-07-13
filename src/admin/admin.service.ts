@@ -61,8 +61,8 @@ export class AdminService {
     }
   }
 
-  async listUsers(page = 1, limit = 10) {
-    const [data, total] = await this.usersService.findAllPaginated(page, limit);
+  async listUsers(page = 1, limit = 10, roleName?: string) {
+    const [data, total] = await this.usersService.findAllPaginated(page, limit, roleName);
     return {
       data: data.map((u) => ({
         id: u.id,

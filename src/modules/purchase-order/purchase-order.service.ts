@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PurchaseOrder } from './purchase-order.entity';
+import { Order } from '../../common/entities/order.entity';
+import { OrderItem } from '../order-item/order-item.entity';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dtos/index';
 
 @Injectable()
@@ -9,63 +11,140 @@ export class PurchaseOrderService {
   constructor(
     @InjectRepository(PurchaseOrder)
     private readonly poRepository: Repository<PurchaseOrder>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(
-    createPurchaseOrderDto: CreatePurchaseOrderDto,
-  ): Promise<PurchaseOrder> {
-    const po = this.poRepository.create(createPurchaseOrderDto);
-    return this.poRepository.save(po);
+  async create(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
+    const { items, supplierId, warehouseId, ...orderFields } = dto;
+
+    return this.dataSource.transaction(async (manager) => {
+      const totalAmount = this.calculateTotalAmount(items ?? []);
+      const order = manager.create(Order, { ...orderFields, totalAmount });
+      const savedOrder = await manager.save(order);
+
+      const po = manager.create(PurchaseOrder, {
+        orderId: savedOrder.id,
+        supplierId,
+        warehouseId,
+      });
+
+      await manager.save(po);
+
+      if (items && items.length > 0) {
+        const orderItems = items.map((item) =>
+          manager.create(OrderItem, {
+            ...item,
+            orderType: 'PURCHASE',
+            orderId: savedOrder.id,
+            lineTotal: item.quantity * item.unitPrice,
+          }),
+        );
+        await manager.save(orderItems);
+      }
+
+      return manager.findOneOrFail(PurchaseOrder, {
+        where: { orderId: savedOrder.id },
+        relations: {
+          order: { orderItems: { item: true } },
+          supplier: true,
+          warehouse: true,
+        },
+      });
+    });
   }
 
-  async findAll(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: PurchaseOrder[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  private calculateTotalAmount(
+    items: { quantity: number; unitPrice: number }[],
+  ): number {
+    return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  }
+
+  async findAll(page: number = 1, limit: number = 10, status?: string) {
+    const where: any = {};
+    if (status) {
+      where.order = { status };
+    }
     const [data, total] = await this.poRepository.findAndCount({
+      where,
       skip: (page - 1) * limit,
       take: limit,
-      order: { createdAt: 'DESC' },
-      relations: ['supplier'],
+      order: { order: { createdAt: 'DESC' } },
+      relations: {
+        order: { orderItems: { item: true } },
+        supplier: true,
+        warehouse: true
+      },
     });
     return { data, total, page, limit };
   }
 
-  async findOne(id: string): Promise<PurchaseOrder> {
+  async findOne(orderId: string): Promise<PurchaseOrder> {
     const po = await this.poRepository.findOne({
-      where: { id },
-      relations: ['supplier'],
+      where: { orderId },
+      relations: {
+        order: { orderItems: { item: true } },
+        supplier: true,
+        warehouse: true
+      },
     });
-    if (!po) {
-      throw new NotFoundException('Purchase order not found');
-    }
+    if (!po) throw new NotFoundException('Purchase order not found');
     return po;
   }
 
   async update(
-    id: string,
-    updatePurchaseOrderDto: UpdatePurchaseOrderDto,
+    orderId: string,
+    dto: UpdatePurchaseOrderDto,
   ): Promise<PurchaseOrder> {
-    const po = await this.findOne(id);
-    Object.assign(po, updatePurchaseOrderDto);
-    return this.poRepository.save(po);
-  }
-
-  async remove(id: string): Promise<void> {
-    const result = await this.poRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Purchase order not found');
+    const po = await this.findOne(orderId);
+    const { supplierId, ...orderFields } = dto as any;
+    if (Object.keys(orderFields).length > 0) {
+      await this.orderRepository.update(po.orderId, orderFields);
     }
+    if (supplierId !== undefined) {
+      po.supplierId = supplierId;
+      await this.poRepository.save(po);
+    }
+    return this.findOne(orderId);
   }
 
-  async approve(id: string): Promise<PurchaseOrder> {
-    const po = await this.findOne(id);
-    po.status = 'APPROVED';
-    return this.poRepository.save(po);
+  async remove(orderId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(OrderItem, { orderId });
+      await manager.delete(PurchaseOrder, { orderId });
+      await manager.delete(Order, { id: orderId });
+    });
+  }
+
+  async approve(orderId: string): Promise<PurchaseOrder> {
+    const po = await this.findOne(orderId);
+
+    // Check warehouse capacity before approving
+    const warehouse = po.warehouse;
+    const orderItems = po.order?.orderItems ?? [];
+
+    if (warehouse && orderItems.length > 0) {
+      // Calculate total capacity load: sum(quantity × item.capacityUsage)
+      const totalLoad = orderItems.reduce((sum, oi) => {
+        const usage = Number(oi.item?.capacityUsage ?? 1);
+        return sum + oi.quantity * usage;
+      }, 0);
+
+      const currentLoad = Number(warehouse.currentLoad ?? 0);
+      const maxCapacity = Number(warehouse.maxCapacity ?? 0);
+
+      if (maxCapacity > 0 && currentLoad + totalLoad > maxCapacity) {
+        throw new BadRequestException(
+          `Cannot approve: warehouse capacity exceeded. ` +
+            `Current: ${currentLoad}, Required: ${totalLoad}, Max: ${maxCapacity}`,
+        );
+      }
+    }
+
+    await this.orderRepository.update(po.orderId, { status: 'APPROVED' });
+    return this.findOne(orderId);
   }
 }

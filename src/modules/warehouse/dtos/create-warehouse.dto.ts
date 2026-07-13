@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateWarehouseDto {
   @ApiProperty()
@@ -15,4 +15,14 @@ export class CreateWarehouseDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  regionId?: string;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  maxCapacity?: number;
 }

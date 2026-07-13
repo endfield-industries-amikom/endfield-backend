@@ -1,19 +1,23 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  OneToOne,
+  PrimaryColumn,
 } from 'typeorm';
+import { Order } from '../../common/entities/order.entity';
 import { Customer } from '../customer/customer.entity';
-import { Warehouse } from '../warehouse/warehouse.entity';
+import { Region } from '../region/region.entity';
 
 @Entity('SALES_ORDER')
 export class SalesOrder {
-  @PrimaryGeneratedColumn('uuid', { name: 'order_id' })
-  id: string;
+  @PrimaryColumn({ name: 'order_id' })
+  orderId: string;
+
+  @OneToOne(() => Order)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 
   @Column({ name: 'customer_id' })
   customerId: string;
@@ -22,34 +26,10 @@ export class SalesOrder {
   @JoinColumn({ name: 'customer_id' })
   customer: Customer;
 
-  @Column({ name: 'warehouse_id' })
-  warehouseId: string;
+  @Column({ name: 'region_id', nullable: true })
+  regionId: string;
 
-  @ManyToOne(() => Warehouse)
-  @JoinColumn({ name: 'warehouse_id' })
-  warehouse: Warehouse;
-
-  @Column({ name: 'order_date', type: 'date', default: () => 'NOW()' })
-  orderDate: Date;
-
-  @Column({ default: 'PENDING' })
-  status: string;
-
-  @Column({
-    name: 'total_amount',
-    type: 'decimal',
-    precision: 12,
-    scale: 2,
-    default: 0,
-  })
-  totalAmount: number;
-
-  @Column({ nullable: true })
-  notes: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @ManyToOne(() => Region)
+  @JoinColumn({ name: 'region_id' })
+  region: Region;
 }
