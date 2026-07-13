@@ -39,8 +39,10 @@ export class SalesOrdersController {
     @Request() req: any,
     @Res() res: any,
   ) {
-    const salesOrder =
-      await this.salesOrdersService.create(createSalesOrderDto, req.user.email);
+    const salesOrder = await this.salesOrdersService.create(
+      createSalesOrderDto,
+      req.user.email,
+    );
     return this.responsesService
       .code('created')
       .message('Sales order created successfully')
@@ -80,7 +82,7 @@ export class SalesOrdersController {
   }
 
   @Post(':orderId/ship')
-  @Roles('Admin')
+  @Roles('Admin', 'Employee')
   async ship(@Param('orderId') orderId: string, @Res() res: any) {
     const salesOrder = await this.salesOrdersService.ship(orderId);
     return this.responsesService
@@ -90,7 +92,7 @@ export class SalesOrdersController {
   }
 
   @Patch(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'Consumer', 'Employee')
   async update(
     @Param('id') id: string,
     @Body() updateSalesOrderDto: UpdateSalesOrderDto,
@@ -107,7 +109,7 @@ export class SalesOrdersController {
   }
 
   @Delete(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'Consumer')
   async remove(@Param('id') id: string, @Res() res: any) {
     await this.salesOrdersService.remove(id);
     return this.responsesService

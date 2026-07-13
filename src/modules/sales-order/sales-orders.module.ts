@@ -7,12 +7,13 @@ import { Order } from '../../common/entities/order.entity';
 import { OrderItem } from '../order-item/order-item.entity';
 import { Item } from '../../common/entities/item.entity';
 import { Customer } from '../customer/customer.entity';
+import { Inventory } from '../inventory/inventory.entity';
 import { CustomersModule } from '../customer/customers.module';
 import { OrderItemModule } from '../order-item/order-item.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SalesOrder, Order, OrderItem, Item, Customer]),
+    TypeOrmModule.forFeature([SalesOrder, Order, OrderItem, Item, Customer, Inventory]),
     CustomersModule,
     OrderItemModule,
   ],

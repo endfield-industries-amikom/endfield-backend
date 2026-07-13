@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { SalesOrder } from './sales-order.entity';
@@ -6,6 +6,7 @@ import { Order } from '../../common/entities/order.entity';
 import { OrderItem } from '../order-item/order-item.entity';
 import { Item } from '../../common/entities/item.entity';
 import { Customer } from '../customer/customer.entity';
+import { Inventory } from '../inventory/inventory.entity';
 import { CreateSalesOrderDto, UpdateSalesOrderDto } from './dtos';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class SalesOrdersService {
     private readonly itemRepository: Repository<Item>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    @InjectRepository(Inventory)
+    private readonly inventoryRepository: Repository<Inventory>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -111,11 +114,29 @@ export class SalesOrdersService {
   async ship(orderId: string) {
     const so = await this.findOne(orderId);
     if (so.order.status === 'SHIPPED') return so;
-    await this.orderRepository.update(so.orderId, { status: 'SHIPPED' });
 
+    // Check inventory availability before shipping
     const orderItems = await this.orderItemRepository.find({
       where: { orderId, orderType: 'SALES' },
     });
+
+    for (const oi of orderItems) {
+      const inventories = await this.inventoryRepository.find({
+        where: { itemId: oi.itemId },
+      });
+      const totalAvailable = inventories.reduce(
+        (sum, inv) => sum + inv.quantityOnHand,
+        0,
+      );
+      if (totalAvailable < oi.quantity) {
+        throw new BadRequestException(
+          `Inventory item does not suffice: item ${oi.itemId} requires ${oi.quantity}, available ${totalAvailable}`,
+        );
+      }
+    }
+
+    await this.orderRepository.update(so.orderId, { status: 'SHIPPED' });
+
     for (const oi of orderItems) {
       await this.itemRepository.increment({ id: oi.itemId }, 'soldQty', oi.quantity);
     }

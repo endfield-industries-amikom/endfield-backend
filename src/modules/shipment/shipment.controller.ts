@@ -41,13 +41,15 @@ export class ShipmentController {
   @Get()
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'order_type', required: false, type: String })
   @Roles('Admin', 'Employee', 'Consumer')
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('order_type') orderType: string = '',
     @Res() res: any,
   ) {
-    const result = await this.shipmentService.findAll(page, limit);
+    const result = await this.shipmentService.findAll(page, limit, orderType);
     return this.responsesService
       .code('success')
       .message('Shipments retrieved successfully')

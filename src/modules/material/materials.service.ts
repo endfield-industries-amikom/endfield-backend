@@ -36,19 +36,20 @@ export class MaterialsService {
   async create(dto: CreateMaterialDto) {
     const item = this.itemRepository.create(dto);
     const savedItem = await this.itemRepository.save(item);
-    const material = this.materialRepository.create({ itemId: savedItem.id });
+
+    const material = this.materialRepository.create({ id: savedItem.id });
     return this.materialRepository.save(material);
   }
 
   async update(id: string, dto: UpdateMaterialDto) {
     const material = await this.findOne(id);
-    await this.itemRepository.update(material.itemId, dto as any);
+    await this.itemRepository.update(material.id, dto as any);
     return this.findOne(id);
   }
 
   async remove(id: string) {
     const material = await this.findOne(id);
     await this.materialRepository.remove(material);
-    await this.itemRepository.delete(material.itemId);
+    await this.itemRepository.delete(material.id);
   }
 }

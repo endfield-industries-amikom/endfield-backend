@@ -3,17 +3,14 @@ import {
   Entity,
   JoinColumn,
   OneToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
 import { Item } from '../../common/entities/item.entity';
 
 @Entity('PRODUCT')
 export class Product {
-  @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
+  @PrimaryColumn({ name: 'item_id' })
   id: string;
-
-  @Column({ name: 'item_id' })
-  itemId: string;
 
   @OneToOne(() => Item)
   @JoinColumn({ name: 'item_id' })

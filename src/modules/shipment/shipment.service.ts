@@ -28,12 +28,13 @@ export class ShipmentService {
     return saved;
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
+  async findAll(page: number = 1, limit: number = 10, orderType: string = '') {
     const [data, total] = await this.shipmentRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
       relations: { order: { orderItems: { item: true } } },
+      where: orderType ? { orderType } : undefined,
     });
     return { data, total, page, limit };
   }

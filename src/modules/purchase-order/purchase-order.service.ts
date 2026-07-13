@@ -19,7 +19,7 @@ export class PurchaseOrderService {
   ) {}
 
   async create(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
-    const { items, supplierId, ...orderFields } = dto;
+    const { items, supplierId, warehouseId, ...orderFields } = dto;
 
     return this.dataSource.transaction(async (manager) => {
       const totalAmount = this.calculateTotalAmount(items ?? []);
@@ -29,6 +29,7 @@ export class PurchaseOrderService {
       const po = manager.create(PurchaseOrder, {
         orderId: savedOrder.id,
         supplierId,
+        warehouseId,
       });
 
       await manager.save(po);
@@ -47,7 +48,11 @@ export class PurchaseOrderService {
 
       return manager.findOneOrFail(PurchaseOrder, {
         where: { orderId: savedOrder.id },
-        relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
+        relations: {
+          order: { orderItems: { item: true } },
+          supplier: true,
+          warehouse: true,
+        },
       });
     });
   }
@@ -68,7 +73,11 @@ export class PurchaseOrderService {
       skip: (page - 1) * limit,
       take: limit,
       order: { order: { createdAt: 'DESC' } },
-      relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
+      relations: {
+        order: { orderItems: { item: true } },
+        supplier: true,
+        warehouse: true
+      },
     });
     return { data, total, page, limit };
   }
@@ -76,7 +85,11 @@ export class PurchaseOrderService {
   async findOne(orderId: string): Promise<PurchaseOrder> {
     const po = await this.poRepository.findOne({
       where: { orderId },
-      relations: { order: { orderItems: { item: true } }, supplier: true, warehouse: true },
+      relations: {
+        order: { orderItems: { item: true } },
+        supplier: true,
+        warehouse: true
+      },
     });
     if (!po) throw new NotFoundException('Purchase order not found');
     return po;
@@ -126,7 +139,7 @@ export class PurchaseOrderService {
       if (maxCapacity > 0 && currentLoad + totalLoad > maxCapacity) {
         throw new BadRequestException(
           `Cannot approve: warehouse capacity exceeded. ` +
-          `Current: ${currentLoad}, Required: ${totalLoad}, Max: ${maxCapacity}`,
+            `Current: ${currentLoad}, Required: ${totalLoad}, Max: ${maxCapacity}`,
         );
       }
     }

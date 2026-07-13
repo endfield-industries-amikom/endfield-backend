@@ -315,10 +315,8 @@ Products are 1:1 extensions of Item. Creating a Product auto-creates the underly
   "data": {
     "data": [
       {
-        "id": "uuid (product PK)",
-        "itemId": "uuid (item FK)",
+        "id": "uuid (shared with Item — same value)",
         "type": "product",
-        "capacityUsage": "1.50",
         "item": {
           "id": "uuid",
           "name": "string",
@@ -397,12 +395,12 @@ Create a Product and its underlying Item atomically.
   "isPurchaseable": false,
   "imageUri": "string?",
   "soldQty": 0,
-  "type": "product",
-  "capacityUsage": 1.00
+  "capacityUsage": 1.00,
+  "type": "product"
 }
 ```
 
-**Response** `201`: `{ "statusCode": 201, "message": "Product created successfully", "data": { id, itemId, type, capacityUsage } }`
+**Response** `201`: `{ "statusCode": 201, "message": "Product created successfully", "data": { id, type } }`
 
 ---
 
@@ -442,9 +440,7 @@ Materials are 1:1 extensions of Item. Creating a Material auto-creates the under
   "data": {
     "data": [
       {
-        "id": "uuid (material PK)",
-        "itemId": "uuid",
-        "unit": "kg",
+        "id": "uuid (shared with Item — same value)",
         "item": {
           "id": "uuid",
           "name": "string",
@@ -497,11 +493,11 @@ Materials are 1:1 extensions of Item. Creating a Material auto-creates the under
   "isManufactureable": false,
   "imageUri": "string?",
   "soldQty": 0,
-  "unit": "kg"
+  "capacityUsage": 1.00
 }
 ```
 
-**Response** `201`: `{ "statusCode": 201, "message": "Material created successfully", "data": { id, itemId, unit } }`
+**Response** `201`: `{ "statusCode": 201, "message": "Material created successfully", "data": { id } }`
 
 ---
 
@@ -793,8 +789,7 @@ Creates Order + SalesOrder + OrderItems in a transaction.
 **Request:**
 ```json
 {
-  "customerId": "uuid (required)",
-  "warehouseId": "uuid (required)",
+  "regionId": "uuid (required)",
   "orderDate": "ISO date string?",
   "status": "PENDING",
   "totalAmount": 600.00,
@@ -809,7 +804,9 @@ Creates Order + SalesOrder + OrderItems in a transaction.
 }
 ```
 
-**Response** `201`: `{ "statusCode": 201, "message": "Sales order created successfully", "data": { ...sales order } }`
+> `customerId` is auto-filled from the authenticated user's Customer record (looked up by email).
+
+**Response** `201`: `{ "statusCode": 201, "message": "Sales order created successfully", "data": { ...sales order with region } }`
 
 ---
 

@@ -4,6 +4,42 @@
 
 ---
 
+## 9. Shared Primary Key: Item.id = Product.id = Material.id
+
+**Before:** Product had `product_id` (auto PK) + `item_id` (FK→Item). Material had `material_id` + `item_id`.
+
+**After:**
+- Product PK column is `item_id` (shared with Item). `Product.id === Item.id`.
+- Material PK column is `item_id` (shared with Item). `Material.id === Item.id`.
+- No more separate `itemId` field in Product/Material responses.
+
+### Response change
+
+**`GET /product`** — `id` is the Item UUID, no `itemId`:
+```json
+{
+  "id": "uuid (same as Item.id)",
+  "type": "product",
+  "item": { "id": "uuid", "name": "...", "capacityUsage": "1.00", "...": "..." }
+}
+```
+
+**`GET /material`** — same pattern:
+```json
+{
+  "id": "uuid (same as Item.id)",
+  "item": { "id": "uuid", "name": "...", "capacityUsage": "1.00", "...": "..." }
+}
+```
+
+**Frontend:** OrderItem.itemId can be used directly with `/product/:itemId` or `/material/:itemId` — same UUID.
+
+---
+
+## 10. Sales order ship validates inventory
+
+`POST /sales-order/:id/ship` now checks each OrderItem against total available inventory (across all warehouses). Returns **400** `"Inventory item does not suffice"` if any item's total available quantity is less than the ordered quantity.
+
 ## 1. Warehouse moved from Order to PurchaseOrder
 
 **Before:** `Order` entity had `warehouseId` + `warehouse` relation shared by both PO and SO.

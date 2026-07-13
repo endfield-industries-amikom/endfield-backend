@@ -37,8 +37,9 @@ export class ProductsService {
     const { type, ...itemFields } = dto;
     const item = this.itemRepository.create(itemFields);
     const savedItem = await this.itemRepository.save(item);
+
     const product = this.productRepository.create({
-      itemId: savedItem.id,
+      id: savedItem.id,
       type,
     });
     return this.productRepository.save(product);
@@ -48,7 +49,7 @@ export class ProductsService {
     const product = await this.findOne(id);
     const { type, ...itemFields } = dto;
     if (Object.keys(itemFields).length > 0) {
-      await this.itemRepository.update(product.itemId, itemFields);
+      await this.itemRepository.update(product.id, itemFields);
     }
     if (type !== undefined) {
       product.type = type;
@@ -60,7 +61,7 @@ export class ProductsService {
   async remove(id: string) {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
-    await this.itemRepository.delete(product.itemId);
+    await this.itemRepository.delete(product.id);
   }
 
   async getTopSelling(limit: number = 10) {
