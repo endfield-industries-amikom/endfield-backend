@@ -35,6 +35,8 @@ import { OrderItemModule } from './modules/order-item/order-item.module';
 import { ItemsModule } from './modules/item/items.module';
 import { SessionMiddleware } from './common/middlewares/session.middleware';
 import { AdminModule } from './admin/admin.module';
+import { S3Module } from 'nestjs-s3';
+import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -83,6 +85,20 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       },
     ]),
     EventEmitterModule.forRoot(),
+    S3Module.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        config: {
+          credentials: fromTemporaryCredentials({
+            params: {
+              RoleArn: configService.get<string>('S3_IAM_ROLE_ARN')!,
+              RoleSessionName: 'endfield-upload-session',
+            },
+          }),
+          region: configService.get<string>('S3_REGION', 'us-east-1'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [AppController],
   providers: [

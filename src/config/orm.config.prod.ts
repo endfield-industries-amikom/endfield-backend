@@ -4,6 +4,20 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 export default function ormConfigProd(
   configService: ConfigService,
 ): TypeOrmModuleOptions {
+  if (configService.get<string>('DB_URL')) {
+    return {
+      type: 'postgres',
+      url: configService.get<string>('DB_URL'),
+      entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+      synchronize: false,
+      ssl: true,
+      extra: {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      },
+    };
+  }
   return {
     type: 'postgres',
     host: configService.get<string>('DB_HOST'),
