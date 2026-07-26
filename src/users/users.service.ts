@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { RegisterUserDto } from './dtos/index';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './users.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -35,7 +35,16 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  async findAllPaginated(page = 1, limit = 10, roleName?: string) {
+  async findAllPaginated(page = 1, limit = 10, roleName?: string | string[]) {
+    if (roleName && roleName instanceof Array) {
+      return this.userRepository.findAndCount({
+        relations: ['role'],
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { createdAt: 'DESC' },
+        where: { role: { roleName: In(roleName) } },
+      });
+    }
     return this.userRepository.findAndCount({
       relations: ['role'],
       skip: (page - 1) * limit,
