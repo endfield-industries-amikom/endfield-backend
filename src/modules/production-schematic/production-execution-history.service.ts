@@ -10,7 +10,10 @@ export class ProductionExecutionHistoryService {
     private readonly historyRepository: Repository<ProductionExecutionHistory>,
   ) {}
 
-  async create(entry: { schematicId: string; warehouseId: string }): Promise<ProductionExecutionHistory> {
+  async create(entry: {
+    schematicId: string;
+    warehouseId: string;
+  }): Promise<ProductionExecutionHistory> {
     const record = this.historyRepository.create({
       schematicId: entry.schematicId,
       warehouseId: entry.warehouseId,
@@ -35,7 +38,10 @@ export class ProductionExecutionHistoryService {
     });
   }
 
-  async findBySchematic(schematicId: string, limit: number = 20): Promise<ProductionExecutionHistory[]> {
+  async findBySchematic(
+    schematicId: string,
+    limit: number = 20,
+  ): Promise<ProductionExecutionHistory[]> {
     return this.historyRepository.find({
       where: { schematicId },
       relations: ['warehouse'],
@@ -44,7 +50,10 @@ export class ProductionExecutionHistoryService {
     });
   }
 
-  async findByWarehouse(warehouseId: string, limit: number = 20): Promise<ProductionExecutionHistory[]> {
+  async findByWarehouse(
+    warehouseId: string,
+    limit: number = 20,
+  ): Promise<ProductionExecutionHistory[]> {
     return this.historyRepository.find({
       where: { warehouseId },
       relations: ['schematic'],

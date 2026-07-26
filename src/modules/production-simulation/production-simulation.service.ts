@@ -17,7 +17,9 @@ export class ProductionSimulationService {
   ) {}
 
   async executeForWarehouse(warehouseId: string): Promise<void> {
-    this.logger.log(`Executing production schematics for warehouse ${warehouseId}`);
+    this.logger.log(
+      `Executing production schematics for warehouse ${warehouseId}`,
+    );
 
     const schematics = await this.schematicRepository.find({
       where: { active: true },
@@ -34,20 +36,16 @@ export class ProductionSimulationService {
     }
 
     for (const schematic of matching) {
-      const history = await this.historyService.create({
-        schematicId: schematic.id,
-        warehouseId,
-      });
-
       try {
-        await this.productionSchematicService.produce(schematic.id, warehouseId);
-        await this.historyService.markCompleted(history.id);
+        await this.productionSchematicService.produce(
+          schematic.id,
+          warehouseId,
+        );
         this.logger.log(
           `Schematic "${schematic.name}" (${schematic.id}) executed for warehouse ${warehouseId}`,
         );
       } catch (error) {
         const msg = (error as Error).message;
-        await this.historyService.markFailed(history.id, msg);
         this.logger.error(`Schematic "${schematic.name}" failed: ${msg}`);
       }
     }

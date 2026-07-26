@@ -104,7 +104,7 @@ export class ProductionSchematicController {
     @Body('warehouseId') warehouseId: string,
     @Res() res: any,
   ) {
-    const schematic = await this.schematicService.produce(id, warehouseId || undefined);
+    const schematic = await this.schematicService.produce(id, warehouseId);
     return this.responsesService
       .code('success')
       .message('Production completed successfully')
@@ -123,7 +123,10 @@ export class ProductionSchematicController {
 
   @Get('warehouse/:warehouseId/history')
   @Roles('Admin', 'Employee')
-  async getWarehouseHistory(@Param('warehouseId') warehouseId: string, @Res() res: any) {
+  async getWarehouseHistory(
+    @Param('warehouseId') warehouseId: string,
+    @Res() res: any,
+  ) {
     const data = await this.historyService.findByWarehouse(warehouseId);
     return this.responsesService
       .code('success')
