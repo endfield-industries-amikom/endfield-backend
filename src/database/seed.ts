@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { Role } from 'src/roles/role.entity';
 import { User } from 'src/users/users.entity';
+import { DataSourceOptions } from 'typeorm/browser';
 
 // Load .env file
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -14,16 +15,37 @@ dotenv.config({
 export async function seed() {
   console.log('🌱 Starting database seed...');
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'secret',
-    database: process.env.DB_NAME || 'inventory_db',
+  const dataSourceConfig: DataSourceOptions = {
+    type: 'postgres' as const,
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-    synchronize: false,
-  });
+    synchronize: true,
+    connectTimeoutMS: 15000,
+    ssl: { rejectUnauthorized: false },
+  };
+
+  let dataSource: DataSource;
+
+  if (process.env.DB_URL) {
+    dataSource = new DataSource({
+      ...dataSourceConfig,
+      url: process.env.DB_URL,
+      extra: {
+        enableChannelBinding: true,
+      },
+    });
+  } else {
+    dataSource = new DataSource({
+      ...dataSourceConfig,
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      username: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'secret',
+      database: process.env.DB_NAME || 'inventory_db',
+      extra: {
+        enableChannelBinding: true
+      },
+    });
+  }
 
   await dataSource.initialize();
   console.log('✅ Database connected');
@@ -43,6 +65,7 @@ export async function seed() {
       { roleName: 'Admin' },
       { roleName: 'Employee' },
       { roleName: 'Consumer' },
+      { roleName: 'Editor' },
     ];
 
     for (const roleData of roles) {

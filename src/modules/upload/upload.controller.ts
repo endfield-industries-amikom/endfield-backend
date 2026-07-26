@@ -52,7 +52,7 @@ export class UploadController {
 
       if (item.imageUri) {
         try {
-          await this.uploadService.deleteImage(item.imageUri);
+          await this.uploadService.deleteImage(item.id);
         } catch (err) {
           this.logger.warn(
             `Failed to delete old S3 object: ${(err as Error).message}`
@@ -60,19 +60,19 @@ export class UploadController {
         }
       }
 
-      const key = await this.uploadService.uploadImage(
+      const imgUrl = await this.uploadService.uploadImage(
         buffer,
         data.mimetype,
         id,
       );
 
-      await this.itemRepository.update(id, { imageUri: key });
-      this.logger.log(`Image uploaded for item ${id}: ${key}`);
+      await this.itemRepository.update(id, { imageUri: imgUrl });
+      this.logger.log(`Image uploaded for item ${id}: ${imgUrl}`);
 
       return this.responsesService
         .code('created')
         .message('Image uploaded successfully')
-        .sendResponse(res, { imageUri: key });
+        .sendResponse(res, { imageUri: imgUrl });
     } catch (error) {
       this.logger.error(`Upload failed: ${(error as Error).message}`);
       if (error instanceof NotFoundException) {
@@ -88,6 +88,8 @@ export class UploadController {
     }
   }
 
+  // Obsolete method
+  // New method shared image directly via CDN
   @Get('image/:id')
   async getImage(@Param('id') id: string, @Res() res: any) {
     try {
@@ -95,8 +97,7 @@ export class UploadController {
       if (!item || !item.imageUri)
         throw new NotFoundException('Image not found');
 
-      const url = await this.uploadService.getPresignedUrl(item.imageUri);
-      return res.redirect(302, url);
+      return res.redirect(302, item.imageUri);
     } catch (error) {
       if (error instanceof NotFoundException) {
         return this.responsesService

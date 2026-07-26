@@ -89,6 +89,12 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       useFactory: (configService: ConfigService) => ({
         config: {
           credentials: fromTemporaryCredentials({
+            masterCredentials: {
+              accessKeyId: configService.get<string>('AWS_ACCESS_KEY_ID')!,
+              secretAccessKey: configService.get<string>(
+                'AWS_SECRET_ACCESS_KEY',
+              )!,
+            },
             params: {
               RoleArn: configService.get<string>('S3_IAM_ROLE_ARN')!,
               RoleSessionName: 'endfield-upload-session',

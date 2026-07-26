@@ -2,12 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectS3 } from 'nestjs-s3';
 import type { S3 } from 'nestjs-s3';
-import {
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class UploadService {
@@ -28,42 +22,27 @@ export class UploadService {
   ): Promise<string> {
     const ext = this.mimeToExt(contentType);
     const key = `images/${itemId}${ext}`;
-
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
-      }),
-    );
+    await this.s3.putObject({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
 
     this.logger.log(`Uploaded to s3://${this.bucketName}/${key}`);
-    return key;
+    const imgUrl = `${this.configService.get<string>('CDN_URL')}/${key}`;
+    return imgUrl;
   }
 
-  async deleteImage(key: string): Promise<void> {
-    await this.s3.send(
-      new DeleteObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      }),
-    );
+  async deleteImage(id: string): Promise<void> {
+    const key = `images/${id}.jpg`;
+    await this.s3.deleteObject({
+      Bucket: this.bucketName,
+      Key: key,
+    });
     this.logger.log(`Deleted s3://${this.bucketName}/${key}`);
   }
 
-  async getPresignedUrl(key: string): Promise<string> {
-    try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
-      return await getSignedUrl(this.s3, command, { expiresIn: 3600 });
-    } catch (error) {
-      this.logger.error(`Failed to get presigned URL for ${key}`, error);
-      throw error;
-    }
-  }
 
   private mimeToExt(mime: string): string {
     const map: Record<string, string> = {

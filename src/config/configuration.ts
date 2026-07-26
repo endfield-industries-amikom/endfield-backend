@@ -11,7 +11,10 @@ export default () => ({
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
   PORT: process.env.PORT,
   UI_URL: process.env.UI_URL,
+  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
   S3_BUCKET: process.env.S3_BUCKET,
   S3_REGION: process.env.S3_REGION || 'us-east-1',
   S3_IAM_ROLE_ARN: process.env.S3_IAM_ROLE_ARN,
+  CDN_URL: process.env.CDN_URL,
 });
