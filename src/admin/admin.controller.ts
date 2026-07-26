@@ -51,7 +51,7 @@ export class AdminController {
     const result = await this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 10,
-      roleName || ['Worker', 'Editor'],
+      roleName || ['Employee', 'Editor'],
     );
     return this.responsesService
       .code('success')
