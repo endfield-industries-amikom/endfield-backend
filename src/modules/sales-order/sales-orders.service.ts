@@ -101,7 +101,7 @@ export class SalesOrdersService {
     return this.dataSource.transaction(async (manager) => {
       const totalAmount = items ? this.calculateTotalAmount(items) : so.order.totalAmount;
       await manager.update(Order,
-        { orderId },
+        { id: orderId },
         { ...orderFields, totalAmount },
       )
       await manager.update(SalesOrder, { orderId }, {
@@ -157,7 +157,7 @@ export class SalesOrdersService {
     }
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.update(Order, { orderId }, { status: 'SHIPPED' })
+      await manager.update(Order, { id: orderId }, { status: 'SHIPPED' })
       orderItems.map(async (item) => {
         const inventories = await manager.find(Inventory, {
           where: { itemId: item.itemId },

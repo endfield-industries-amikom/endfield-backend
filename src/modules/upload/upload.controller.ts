@@ -29,7 +29,34 @@ export class UploadController {
     private readonly itemRepository: Repository<Item>,
     private readonly responsesService: ResponsesService<any>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
+
+  @Post('blogs/:id/image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin', 'Employee')
+  @ApiBearerAuth('bearer')
+  async uploadBlogImage(@Param('id') id: string, @Req() req: any, @Res() res: any) {
+    try {
+      const data = await req.file();
+      if (!data) {
+        return this.responsesService
+          .code('badRequest')
+          .message('No file uploaded')
+          .sendResponse(res, null);
+      }
+      // TODO: Implement uploadBlogImage logic
+      // const result = await this.uploadService.uploadBlogImage(id, data);
+      this.responsesService
+        .code('success')
+        .message('Blog image uploaded successfully')
+        .sendResponse(res, "wow");
+    } catch (err) {
+      this.responsesService
+        .code('internalServerError')
+        .message('Failed to upload blog image')
+        .sendResponse(res, null);
+    }
+  }
 
   @Post('product/:id/image')
   @UseGuards(JwtAuthGuard, RolesGuard)

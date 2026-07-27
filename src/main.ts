@@ -25,7 +25,9 @@ async function bootstrap() {
   const logger = new Logger('BackendService');
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    new FastifyAdapter({
+      trustProxy: process.env.NODE_ENV === 'production' ? 'true' : 'false',
+    }),
     {
       bufferLogs: true,
     },
@@ -115,20 +117,29 @@ async function bootstrap() {
     }),
   );
 
+  if (nodeEnv === "production") {
+    app.enableCors({
+      origin: ['https://endfield.cydlab.my.id', 'http://localhost:3000'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+      maxAge: 86400,
+    });
+  } else {
+    app.enableCors({
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+      maxAge: 86400,
+    });
+  }
+
   // Global guards
   // JwtAuthGuard and RolesGuard are applied per-controller/endpoint via @UseGuards
 
   app.useLogger(logger);
   app.enableShutdownHooks();
-  app.enableCors({
-    origin: isProduction
-      ? ['https://endfield.cydlab.my.id', 'http://localhost:3000']
-      : '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400,
-  });
 
   const port = configService.get<number>('PORT', 3001);
 
