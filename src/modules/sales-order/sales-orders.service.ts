@@ -97,18 +97,28 @@ export class SalesOrdersService {
 
   async update(orderId: string, dto: UpdateSalesOrderDto) {
     const so = await this.findOne(orderId);
-    const { customerId, regionId, ...orderFields } = dto as any;
-    if (Object.keys(orderFields).length > 0) {
-      await this.orderRepository.update(so.orderId, orderFields);
-    }
-    const updates: any = {};
-    if (customerId !== undefined) updates.customerId = customerId;
-    if (regionId !== undefined) updates.regionId = regionId;
-    if (Object.keys(updates).length > 0) {
-      Object.assign(so, updates);
-      await this.salesOrderRepository.save(so);
-    }
-    return this.findOne(orderId);
+    const { items, regionId, ...orderFields } = dto;
+    return this.dataSource.transaction(async (manager) => {
+      const totalAmount = items ? this.calculateTotalAmount(items) : so.order.totalAmount;
+      await manager.update(Order,
+        { orderId },
+        { ...orderFields, totalAmount },
+      )
+      await manager.update(SalesOrder, { orderId }, {
+        regionId
+      })
+      if (items && items.length > 0) {
+        items.map(async (item) => {
+          await manager.update(OrderItem, { orderId }, item)
+        })
+      }
+
+      return manager.findOneOrFail(SalesOrder, {
+        where: { orderId },
+        relations: { order: { orderItems: { item: true } }, customer: true, region: true }
+      })
+
+    })
   }
 
   async confirm(orderId: string) {
@@ -146,26 +156,28 @@ export class SalesOrdersService {
       }
     }
 
-    await this.orderRepository.update(so.orderId, { status: 'SHIPPED' });
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(Order, { orderId }, { status: 'SHIPPED' })
+      orderItems.map(async (item) => {
+        const inventories = await manager.find(Inventory, {
+          where: { itemId: item.itemId },
+          order: {quantityOnHand: 'DESC'}
+        })
 
-    for (const oi of orderItems) {
-      await this.itemRepository.increment({ id: oi.itemId }, 'soldQty', oi.quantity);
+        if (inventories.length === 0) {
+          throw new BadRequestException(`No inventory found for item ${item.itemId}`);
+        }
 
-      // Decrement inventory
-      const inventories = await this.inventoryRepository.find({
-        where: { itemId: oi.itemId },
-        order: { quantityOnHand: 'DESC' },
-      });
-      let remaining = oi.quantity;
-      for (const inv of inventories) {
-        if (remaining <= 0) break;
-        const deduct = Math.min(inv.quantityOnHand, remaining);
-        inv.quantityOnHand -= deduct;
-        remaining -= deduct;
-        await this.inventoryRepository.save(inv);
-      }
-    }
-    return this.findOne(orderId);
+        let remainder = item.quantity;
+        for (const inv of inventories) {
+          if (remainder <= 0) break;
+          const deduct = Math.min(inv.quantityOnHand, remainder);
+          await manager.decrement(Inventory, { id: inv.id }, 'quantityOnHand', deduct);
+          remainder -= deduct;
+        }
+      })
+    })
+    return this.findOne(orderId)
   }
 
   async remove(orderId: string) {

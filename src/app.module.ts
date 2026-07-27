@@ -20,8 +20,6 @@ import { RegionsModule } from './modules/region/regions.module';
 import { WarehousesModule } from './modules/warehouse/warehouses.module';
 import { ProductsModule } from './modules/product/products.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
-import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
-import { ForecastModule } from './modules/forecast/forecast.module';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { ShipmentModule } from './modules/shipment/shipment.module';
@@ -53,8 +51,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     WarehousesModule,
     ProductsModule,
     InventoryModule,
-    StockMovementModule,
-    ForecastModule,
     SupplierModule,
     PurchaseOrderModule,
     ShipmentModule,
