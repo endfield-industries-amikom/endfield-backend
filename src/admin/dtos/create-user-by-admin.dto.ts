@@ -16,8 +16,8 @@ export class CreateUserByAdminDto {
   @MinLength(8)
   password: string;
 
-  @ApiProperty({ example: 'Employee', enum: ['Admin', 'Employee', 'Consumer'] })
+  @ApiProperty({ example: 'Employee', enum: ['Admin', 'Employee', 'Editor'] })
   @IsString()
-  @IsIn(['Admin', 'Employee', 'Consumer'])
+  @IsIn(['Admin', 'Employee', 'Editor'])
   roleName: string;
 }

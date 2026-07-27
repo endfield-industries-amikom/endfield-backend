@@ -10,7 +10,11 @@ import { InventoryModule } from 'src/modules/inventory/inventory.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ProductionSchematic, ProductionExecutionHistory, Inventory]),
+    TypeOrmModule.forFeature([
+      ProductionSchematic,
+      ProductionExecutionHistory,
+      Inventory,
+    ]),
     forwardRef(() => InventoryModule),
   ],
   providers: [ProductionSchematicService, ProductionExecutionHistoryService],

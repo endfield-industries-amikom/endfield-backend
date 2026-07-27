@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OnEvent } from '@nestjs/event-emitter';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, EntityManager, In } from 'typeorm';
 import { Shipment } from '../shipment/shipment.entity';
 import { ShipmentArrivedEvent } from '../shipment/events/shipment-arrived.event';
 import { PurchaseOrder } from '../purchase-order/purchase-order.entity';
@@ -57,13 +57,18 @@ export class InventoryEventHandler {
     const orderId = shipment.orderId;
 
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.dataSource.transaction(async (manager: EntityManager) => {
         const po = await manager.findOne(PurchaseOrder, {
           where: { orderId },
           relations: ['order'],
         });
         if (!po) {
-          await this.failShipment(manager, shipment.id, orderId, 'Purchase order not found');
+          await this.failShipment(
+            manager,
+            shipment.id,
+            orderId,
+            'Purchase order not found'
+          );
           return;
         }
 
@@ -71,7 +76,12 @@ export class InventoryEventHandler {
           where: { id: po.warehouseId },
         });
         if (!warehouse) {
-          await this.failShipment(manager, shipment.id, orderId, 'Destination warehouse not found');
+          await this.failShipment(
+            manager,
+            shipment.id,
+            orderId,
+            'Destination warehouse not found'
+          );
           return;
         }
 
@@ -80,13 +90,15 @@ export class InventoryEventHandler {
         });
 
         if (orderItems.length === 0) {
-          this.logger.log(`No order items for PO ${orderId} — nothing to stock`);
+          this.logger.log(
+            `No order items for PO ${orderId} — nothing to stock`
+          );
           return;
         }
 
         // Load all items to get their capacityUsage
         const itemIds = [...new Set(orderItems.map((oi) => oi.itemId))];
-        const items = await manager.findByIds(Item, itemIds);
+        const items = await manager.find(Item, { where: { id: In(itemIds) } });
         const itemMap = new Map(items.map((it) => [it.id, it]));
 
         // Calculate total load: sum(quantity × capacityUsage)
@@ -152,7 +164,11 @@ export class InventoryEventHandler {
       }
 
       // Mark order as ARRIVED after successful processing
-      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'ARRIVED' });
+      await this.dataSource.manager.update(
+        Order,
+        { id: orderId },
+        { status: 'ARRIVED' },
+      );
       this.logger.log(`Order ${orderId} status: ARRIVED`);
     } catch (error) {
       this.logger.error(
@@ -162,7 +178,11 @@ export class InventoryEventHandler {
         status: 'FAILED',
         statusMessage: `Transaction error: ${(error as Error).message}`,
       });
-      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'FAILED' });
+      await this.dataSource.manager.update(
+        Order,
+        { id: orderId },
+        { status: 'FAILED' },
+      );
     }
   }
 
@@ -170,18 +190,14 @@ export class InventoryEventHandler {
     const orderId = shipment.orderId;
 
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.dataSource.transaction(async (manager: EntityManager) => {
         const so = await manager.findOne(SalesOrder, {
           where: { orderId },
           relations: ['order'],
         });
         if (!so || so.order.status === 'ARRIVED') return;
 
-        await manager.update(
-          'ORDER',
-          { id: orderId },
-          { status: 'ARRIVED' },
-        );
+        await manager.update(Order, { id: orderId }, { status: 'ARRIVED' });
         this.logger.log(`Sales order ${orderId} marked as ARRIVED`);
 
         const orderItems = await manager.find(OrderItem, {
@@ -205,7 +221,11 @@ export class InventoryEventHandler {
       this.logger.error(
         `Sales arrival failed for shipment ${shipment.id}: ${(error as Error).message}`,
       );
-      await this.dataSource.manager.update(Order, { id: orderId }, { status: 'FAILED' });
+      await this.dataSource.manager.update(
+        Order,
+        { id: orderId },
+        { status: 'FAILED' },
+      );
     }
   }
 

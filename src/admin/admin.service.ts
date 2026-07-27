@@ -61,7 +61,7 @@ export class AdminService {
     }
   }
 
-  async listUsers(page = 1, limit = 10, roleName?: string) {
+  async listUsers(page = 1, limit = 10, roleName?: string | string[]) {
     const [data, total] = await this.usersService.findAllPaginated(page, limit, roleName);
     return {
       data: data.map((u) => ({
@@ -93,5 +93,10 @@ export class AdminService {
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
     };
+  }
+
+  async deleteUser(userId: string) {
+    await this.usersService.deleteUserById(userId);
+    return 'User deleted successfully';
   }
 }

@@ -3,10 +3,11 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { ProductionSchematic } from './production-schematic.entity';
 import { Inventory } from 'src/modules/inventory/inventory.entity';
+import { ProductionExecutionHistoryService } from '../production-schematic/production-execution-history.service';
 import {
   CreateProductionSchematicDto,
   UpdateProductionSchematicDto,
@@ -19,6 +20,9 @@ export class ProductionSchematicService {
     private readonly schematicRepository: Repository<ProductionSchematic>,
     @InjectRepository(Inventory)
     private readonly inventoryRepository: Repository<Inventory>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly historyService: ProductionExecutionHistoryService,
   ) {}
 
   async create(
@@ -47,7 +51,10 @@ export class ProductionSchematicService {
     return schematic;
   }
 
-  async update(id: string, dto: UpdateProductionSchematicDto): Promise<ProductionSchematic> {
+  async update(
+    id: string,
+    dto: UpdateProductionSchematicDto,
+  ): Promise<ProductionSchematic> {
     const schematic = await this.findOne(id);
     Object.assign(schematic, dto);
     return this.schematicRepository.save(schematic);
@@ -58,7 +65,7 @@ export class ProductionSchematicService {
     if (result.affected === 0) throw new NotFoundException('Production schematic not found');
   }
 
-  async produce(id: string, warehouseId?: string): Promise<ProductionSchematic> {
+  async produce(id: string, warehouseId: string): Promise<ProductionSchematic> {
     const schematic = await this.schematicRepository.findOne({
       where: { id },
       relations: ['outputItem'],
@@ -69,55 +76,72 @@ export class ProductionSchematicService {
     const inputQty: number[] = schematic.inputQty ?? [];
 
     if (inputs.length === 0) {
-      throw new BadRequestException('Production schematic has no input items defined');
+      throw new BadRequestException(
+        'Production schematic has no input items defined',
+      );
     }
     if (inputs.length !== inputQty.length) {
-      throw new BadRequestException('Input items and quantities must have the same length');
+      throw new BadRequestException(
+        'Input items and quantities must have the same length',
+      );
     }
+    // Create history entry
+    const history = await this.historyService.create({
+      schematicId: schematic.id,
+      warehouseId,
+    });
+    try {
+      await this.dataSource.transaction(async (manager: EntityManager) => {
+        // Deduct inputs from inventory (scoped to warehouse if provided)
+        for (let i = 0; i < inputs.length; i++) {
+          const itemId = inputs[i];
+          const requiredQty = inputQty[i];
 
-    // Deduct inputs from inventory (scoped to warehouse if provided)
-    for (let i = 0; i < inputs.length; i++) {
-      const itemId = inputs[i];
-      const requiredQty = inputQty[i];
+          const where: any = { itemId };
+          if (warehouseId) where.warehouseId = warehouseId;
 
-      const where: any = { itemId };
-      if (warehouseId) where.warehouseId = warehouseId;
+          const inventory = await this.inventoryRepository.findOne({ where });
+          if (!inventory) {
+            const scope = warehouseId ? ` in warehouse ${warehouseId}` : '';
+            throw new BadRequestException(
+              `No inventory found for input item ${itemId}${scope}`,
+            );
+          }
+          if (inventory.quantityOnHand < requiredQty) {
+            throw new BadRequestException(
+              `Insufficient inventory for item ${itemId}. Available: ${inventory.quantityOnHand}, Required: ${requiredQty}`,
+            );
+          }
+          inventory.quantityOnHand -= requiredQty;
+          await manager.save(inventory);
+        }
 
-      const inventory = await this.inventoryRepository.findOne({ where });
-      if (!inventory) {
-        const scope = warehouseId ? ` in warehouse ${warehouseId}` : '';
-        throw new BadRequestException(`No inventory found for input item ${itemId}${scope}`);
-      }
-      if (inventory.quantityOnHand < requiredQty) {
-        throw new BadRequestException(
-          `Insufficient inventory for item ${itemId}. Available: ${inventory.quantityOnHand}, Required: ${requiredQty}`,
-        );
-      }
-      inventory.quantityOnHand -= requiredQty;
-      await this.inventoryRepository.save(inventory);
-    }
+        // Add output to inventory — auto-create if missing
+        const outWhere: any = { itemId: schematic.outputItemId };
+        if (warehouseId) outWhere.warehouseId = warehouseId;
+        let outputInventory = await this.inventoryRepository.findOne({ where: outWhere });
 
-    // Add output to inventory — auto-create if missing
-    const outWhere: any = { itemId: schematic.outputItemId };
-    if (warehouseId) outWhere.warehouseId = warehouseId;
-
-    let outputInventory = await this.inventoryRepository.findOne({ where: outWhere });
-
-    if (outputInventory) {
-      outputInventory.quantityOnHand += schematic.outputQty;
-      await this.inventoryRepository.save(outputInventory);
-    } else {
-      // Auto-create inventory record for the output item in this warehouse
-      outputInventory = this.inventoryRepository.create({
-        itemId: schematic.outputItemId,
-        warehouseId: warehouseId ?? undefined,
-        quantityOnHand: schematic.outputQty,
-        reservedQuantity: 0,
-        reorderLevel: 10,
+        if (outputInventory) {
+          outputInventory.quantityOnHand += schematic.outputQty;
+          await manager.save(outputInventory);
+        } else {
+          // Auto-create inventory record for the output item in this warehouse
+          outputInventory = this.inventoryRepository.create({
+            itemId: schematic.outputItemId,
+            warehouseId: warehouseId ?? undefined,
+            quantityOnHand: schematic.outputQty,
+            reservedQuantity: 0,
+            reorderLevel: 10,
+          });
+          await manager.save(outputInventory);
+        }
       });
-      await this.inventoryRepository.save(outputInventory);
+      // Mark history as completed
+      await this.historyService.markCompleted(history.id);
+    } catch (err) {
+      await this.historyService.markFailed(history.id, err.message || "Production failed");
+      throw err;
     }
-
     return schematic;
   }
 }

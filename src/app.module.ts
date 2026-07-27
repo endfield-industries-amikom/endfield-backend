@@ -20,8 +20,6 @@ import { RegionsModule } from './modules/region/regions.module';
 import { WarehousesModule } from './modules/warehouse/warehouses.module';
 import { ProductsModule } from './modules/product/products.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
-import { StockMovementModule } from './modules/stock-movement/stock-movement.module';
-import { ForecastModule } from './modules/forecast/forecast.module';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { ShipmentModule } from './modules/shipment/shipment.module';
@@ -35,6 +33,8 @@ import { OrderItemModule } from './modules/order-item/order-item.module';
 import { ItemsModule } from './modules/item/items.module';
 import { SessionMiddleware } from './common/middlewares/session.middleware';
 import { AdminModule } from './admin/admin.module';
+import { S3Module } from 'nestjs-s3';
+import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -51,8 +51,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     WarehousesModule,
     ProductsModule,
     InventoryModule,
-    StockMovementModule,
-    ForecastModule,
     SupplierModule,
     PurchaseOrderModule,
     ShipmentModule,
@@ -83,6 +81,26 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       },
     ]),
     EventEmitterModule.forRoot(),
+    S3Module.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        config: {
+          credentials: fromTemporaryCredentials({
+            masterCredentials: {
+              accessKeyId: configService.get<string>('AWS_ACCESS_KEY_ID')!,
+              secretAccessKey: configService.get<string>(
+                'AWS_SECRET_ACCESS_KEY',
+              )!,
+            },
+            params: {
+              RoleArn: configService.get<string>('S3_IAM_ROLE_ARN')!,
+              RoleSessionName: 'endfield-upload-session',
+            },
+          }),
+          region: configService.get<string>('S3_REGION', 'us-east-1'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [AppController],
   providers: [

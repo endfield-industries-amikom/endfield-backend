@@ -1,3 +1,10 @@
+// Fix Node.js "happy eyeballs" dual-stack race condition on machines
+// where IPv6 is configured but has no internet route (e.g. Neon DB).
+// Without this, simultaneous IPv4/IPv6 connection attempts cause
+// the IPv6 ENETUNREACH to abort the successful IPv4 connection.
+import net from 'node:net';
+net.setDefaultAutoSelectFamily(false);
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
@@ -5,6 +12,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
@@ -17,40 +25,40 @@ async function bootstrap() {
   const logger = new Logger('BackendService');
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    new FastifyAdapter({
+      trustProxy: process.env.NODE_ENV === 'production' ? 'true' : 'false',
+    }),
     {
       bufferLogs: true,
     },
   );
 
+  const configService = app.get(ConfigService);
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  const isProduction = nodeEnv === 'production';
+
   // Register Fastify plugins
   await app.register(fastifyCookie, {
     secret:
-      process.env.COOKIE_SECRET ||
+      configService.get<string>('COOKIE_SECRET') ||
       'default-cookie-secret-change-me-long-enough',
     parseOptions: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'strict',
-      domain:
-        process.env.NODE_ENV === 'production'
-          ? 'endfield.cydlab.my.id'
-          : undefined,
+      domain: isProduction ? 'endfield.cydlab.my.id' : undefined,
     },
   });
 
   await app.register(fastifySession, {
     secret:
-      process.env.SESSION_SECRET ||
+      configService.get<string>('SESSION_SECRET') ||
       'default-session-secret-change-me-long-enough',
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'strict',
-      domain:
-        process.env.NODE_ENV === 'production'
-          ? 'endfield.cydlab.my.id'
-          : undefined,
+      domain: isProduction ? 'endfield.cydlab.my.id' : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
     saveUninitialized: false,
@@ -59,7 +67,7 @@ async function bootstrap() {
   await app.register(fastifyMultipart);
 
   // Swagger (development only)
-  if (process.env.NODE_ENV === 'development') {
+  if (nodeEnv === 'development') {
     const swagger = new DocumentBuilder()
       .setTitle('Endfield Backend')
       .setDescription(
@@ -109,26 +117,33 @@ async function bootstrap() {
     }),
   );
 
+  if (nodeEnv === "production") {
+    app.enableCors({
+      origin: ['https://endfield.cydlab.my.id', 'http://localhost:3000'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+      maxAge: 86400,
+    });
+  } else {
+    app.enableCors({
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+      maxAge: 86400,
+    });
+  }
+
   // Global guards
   // JwtAuthGuard and RolesGuard are applied per-controller/endpoint via @UseGuards
 
   app.useLogger(logger);
   app.enableShutdownHooks();
-  app.enableCors({
-    origin:
-      process.env.NODE_ENV === 'development'
-        ? '*'
-        : ['https://endfield.cydlab.my.id', 'http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400,
-  });
 
-  const port = process.env.PORT ?? 3001;
+  const port = configService.get<number>('PORT', 3001);
 
   // Seed the database before accepting traffic.
-  // Retry a few times — the DB container may still be starting.
   await seedDatabase(logger);
 
   await app.listen(port, '0.0.0.0');

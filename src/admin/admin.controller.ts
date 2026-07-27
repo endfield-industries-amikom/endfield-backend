@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -44,13 +45,13 @@ export class AdminController {
   async listUsers(
     @Query('page') page: string,
     @Query('limit') limit: string,
-    @Query('roleName') roleName: string,
+    @Query('roleName') roleName: string[],
     @Res() res: any,
   ) {
     const result = await this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 10,
-      roleName || 'Employee',
+      roleName || ['Employee', 'Editor'],
     );
     return this.responsesService
       .code('success')
@@ -66,5 +67,15 @@ export class AdminController {
       .code('success')
       .message('User retrieved successfully')
       .sendResponse(res, user);
+  }
+
+  @Delete('users/:id')
+  @Roles('Admin')
+  async deleteUser(@Param('id') id: string, @Res() res: any) {
+    await this.adminService.deleteUser(id);
+    return this.responsesService
+      .code('success')
+      .message('User deleted successfully')
+      .sendResponse(res, null);
   }
 }
