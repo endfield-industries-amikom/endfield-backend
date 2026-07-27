@@ -26,7 +26,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      trustProxy: process.env.NODE_ENV === 'production' ? 'true' : 'false',
+      trustProxy: process.env.NODE_ENV === 'production' ? true : false,
     }),
     {
       bufferLogs: true,
