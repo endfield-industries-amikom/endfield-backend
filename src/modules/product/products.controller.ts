@@ -58,7 +58,7 @@ export class ProductsController {
   }
 
   @Get(':id')
-  @Roles('Admin', 'Employee', 'Consumer')
+  @Public()
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Res() res: any) {
     const data = await this.productsService.findOne(id);
     return this.responsesService
