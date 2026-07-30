@@ -9,11 +9,11 @@ export class AppController {
     private readonly responsesService: ResponsesService<null>,
   ) {}
 
-  @Get()
-  getHello(@Res() res: any): void {
+  @Get('/healthz')
+  getHealthz(@Res() res: any): void {
     this.responsesService
       .code('success')
-      .message(this.appService.getHello())
+      .message(this.appService.getHealthz())
       .sendResponse(res, null);
   }
 }

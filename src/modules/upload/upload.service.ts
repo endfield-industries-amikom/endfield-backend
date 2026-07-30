@@ -15,6 +15,25 @@ export class UploadService {
     this.bucketName = this.configService.get<string>('S3_BUCKET')!;
   }
 
+  async uploadBlogImage(
+    buffer: Buffer,
+    contentType: string,
+    itemId: string,
+  ): Promise<string> {
+    const ext = this.mimeToExt(contentType);
+    const key = `blogs/images/${itemId}${ext}`;
+    await this.s3.putObject({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+
+    this.logger.log(`Uploaded to s3://${this.bucketName}/${key}`);
+    const imgUrl = `${this.configService.get<string>('CDN_URL')}/${key}`;
+    return imgUrl;
+  }
+
   async uploadImage(
     buffer: Buffer,
     contentType: string,
