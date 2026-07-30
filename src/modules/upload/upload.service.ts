@@ -1,7 +1,9 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectS3 } from 'nestjs-s3';
 import type { S3 } from 'nestjs-s3';
+import sharp from 'sharp';
 
 @Injectable()
 export class UploadService {
@@ -20,13 +22,17 @@ export class UploadService {
     contentType: string,
     itemId: string,
   ): Promise<string> {
-    const ext = this.mimeToExt(contentType);
-    const key = `blogs/images/${itemId}${ext}`;
+    const hash = createHash('sha256')
+      .update(buffer)
+      .digest('hex')
+      .substring(0, 8);
+    const webpBuffer = await this.compressToWebp(buffer);
+    const key = `blogs/images/${itemId}-${hash}.webp`;
     await this.s3.putObject({
       Bucket: this.bucketName,
       Key: key,
-      Body: buffer,
-      ContentType: contentType,
+      Body: webpBuffer,
+      ContentType: 'image/webp',
     });
 
     this.logger.log(`Uploaded to s3://${this.bucketName}/${key}`);
@@ -39,13 +45,13 @@ export class UploadService {
     contentType: string,
     itemId: string,
   ): Promise<string> {
-    const ext = this.mimeToExt(contentType);
-    const key = `images/${itemId}${ext}`;
+    const webpBuffer = await this.compressToWebp(buffer);
+    const key = `images/${itemId}.webp`;
     await this.s3.putObject({
       Bucket: this.bucketName,
       Key: key,
-      Body: buffer,
-      ContentType: contentType,
+      Body: webpBuffer,
+      ContentType: 'image/webp',
     });
 
     this.logger.log(`Uploaded to s3://${this.bucketName}/${key}`);
@@ -53,8 +59,11 @@ export class UploadService {
     return imgUrl;
   }
 
-  async deleteImage(id: string): Promise<void> {
-    const key = `images/${id}.jpg`;
+  async deleteImage(imageUri: string): Promise<void> {
+    const cdnUrl = this.configService.get<string>('CDN_URL')!;
+    const key = imageUri.startsWith(cdnUrl)
+      ? imageUri.substring(cdnUrl.length + 1)
+      : imageUri;
     await this.s3.deleteObject({
       Bucket: this.bucketName,
       Key: key,
@@ -62,15 +71,7 @@ export class UploadService {
     this.logger.log(`Deleted s3://${this.bucketName}/${key}`);
   }
 
-
-  private mimeToExt(mime: string): string {
-    const map: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-      'image/bmp': '.bmp',
-    };
-    return map[mime] || '.jpg';
+  private async compressToWebp(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer).webp({ quality: 80 }).toBuffer();
   }
 }

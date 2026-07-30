@@ -2,13 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('BLOG')
 export class Blog {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ length: 255 })
   id: string;
 
   @Column({ length: 255 })
@@ -28,4 +28,11 @@ export class Blog {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  static toSlug(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
 }

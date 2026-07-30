@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Blog } from './blog.entity';
@@ -27,12 +31,48 @@ export class BlogsService {
   }
 
   async create(dto: CreateBlogDto) {
-    const blog = this.blogRepository.create(dto);
+    const slug = Blog.toSlug(dto.title);
+    if (!slug) {
+      throw new ConflictException(
+        'Title must contain at least one alphanumeric character',
+      );
+    }
+
+    const existing = await this.blogRepository.findOne({ where: { id: slug } });
+    if (existing) {
+      throw new ConflictException(
+        `A blog with title "${dto.title}" already exists`,
+      );
+    }
+
+    const blog = this.blogRepository.create({ ...dto, id: slug });
     return this.blogRepository.save(blog);
   }
 
   async update(id: string, dto: UpdateBlogDto) {
     const blog = await this.findOne(id);
+
+    if (dto.title !== undefined) {
+      const newSlug = Blog.toSlug(dto.title);
+      if (!newSlug) {
+        throw new ConflictException(
+          'Title must contain at least one alphanumeric character',
+        );
+      }
+
+      if (newSlug !== id) {
+        const existing = await this.blogRepository.findOne({
+          where: { id: newSlug },
+        });
+        if (existing) {
+          throw new ConflictException(
+            `A blog with title "${dto.title}" already exists`,
+          );
+        }
+        blog.id = newSlug;
+      }
+    }
+
     Object.assign(blog, dto);
     return this.blogRepository.save(blog);
   }

@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -48,7 +47,7 @@ export class BlogsController {
 
   @Get(':id')
   @Public()
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Res() res: any) {
+  async findOne(@Param('id') id: string, @Res() res: any) {
     const data = await this.blogsService.findOne(id);
     return this.responsesService
       .code('success')
@@ -69,7 +68,7 @@ export class BlogsController {
   @Patch(':id')
   @Roles('Admin', 'Editor')
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() updateBlogDto: UpdateBlogDto,
     @Res() res: any,
   ) {
@@ -82,7 +81,7 @@ export class BlogsController {
 
   @Delete(':id')
   @Roles('Admin', 'Editor')
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Res() res: any) {
+  async remove(@Param('id') id: string, @Res() res: any) {
     await this.blogsService.remove(id);
     return this.responsesService
       .code('success')

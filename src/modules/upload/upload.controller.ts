@@ -59,7 +59,7 @@ export class UploadController {
       const buffer = await data.toBuffer();
       if (blog.imageUri){
         try {
-          await this.uploadService.deleteImage(blog.id);
+          await this.uploadService.deleteImage(blog.imageUri);
         } catch (err) {
           this.logger.warn(
             `Failed to delete old S3 object: ${(err as Error).message}`,
@@ -113,7 +113,7 @@ export class UploadController {
 
       if (item.imageUri) {
         try {
-          await this.uploadService.deleteImage(item.id);
+          await this.uploadService.deleteImage(item.imageUri);
         } catch (err) {
           this.logger.warn(
             `Failed to delete old S3 object: ${(err as Error).message}`
