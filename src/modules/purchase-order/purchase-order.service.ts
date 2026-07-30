@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { PurchaseOrder } from './purchase-order.entity';
@@ -99,16 +103,37 @@ export class PurchaseOrderService {
     orderId: string,
     dto: UpdatePurchaseOrderDto,
   ): Promise<PurchaseOrder> {
-    const po = await this.findOne(orderId);
-    const { supplierId, ...orderFields } = dto as any;
-    if (Object.keys(orderFields).length > 0) {
-      await this.orderRepository.update(po.orderId, orderFields);
-    }
-    if (supplierId !== undefined) {
-      po.supplierId = supplierId;
-      await this.poRepository.save(po);
-    }
-    return this.findOne(orderId);
+    return this.dataSource.transaction(async (manager) => {
+      const order = await manager.findOne(Order, { where: { id: orderId } });
+      if (!order) throw new NotFoundException('Purchase order not found');
+      const { warehouseId, items, supplierId, ...orderFields } = dto;
+      const totalAmount = this.calculateTotalAmount(items ?? []);
+      if (Object.keys(orderFields).length > 0) {
+        await manager.update(
+          Order,
+          { id: orderId },
+          { ...orderFields, totalAmount }
+        );
+      }
+      await manager.update(
+        PurchaseOrder,
+        { orderId },
+        { supplierId, warehouseId },
+      );
+      if (items && items.length > 0) {
+        await Promise.all(
+          items.map(
+            async (item) =>
+              await manager.update(
+                OrderItem,
+                { orderId },
+                { ...item, lineTotal: item.quantity * item.unitPrice },
+              ),
+          ),
+        );
+      }
+      return manager.findOneOrFail(PurchaseOrder, { where: { orderId } });
+    });
   }
 
   async remove(orderId: string): Promise<void> {

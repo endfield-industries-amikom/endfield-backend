@@ -18,6 +18,7 @@ import { Repository } from 'typeorm';
 import { Item } from '../../common/entities/item.entity';
 import { ResponsesService } from 'src/utils/responses/responses.service';
 import { UploadService } from './upload.service';
+import { Blog } from '../blog/blog.entity';
 
 @ApiTags('Upload')
 @Controller()
@@ -27,16 +28,25 @@ export class UploadController {
   constructor(
     @InjectRepository(Item)
     private readonly itemRepository: Repository<Item>,
+    @InjectRepository(Blog)
+    private readonly blogRepository: Repository<Blog>,
     private readonly responsesService: ResponsesService<any>,
     private readonly uploadService: UploadService,
   ) { }
 
   @Post('blogs/:id/image')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Admin', 'Employee')
+  @Roles('Admin', 'Employee', 'Editor')
   @ApiBearerAuth('bearer')
-  async uploadBlogImage(@Param('id') id: string, @Req() req: any, @Res() res: any) {
+  async uploadBlogImage(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: any,
+  ) {
     try {
+      const blog = await this.blogRepository.findOne({ where: { id } });
+      if (!blog) throw new NotFoundException('Blog not found');
+
       const data = await req.file();
       if (!data) {
         return this.responsesService
@@ -46,11 +56,35 @@ export class UploadController {
       }
       // TODO: Implement uploadBlogImage logic
       // const result = await this.uploadService.uploadBlogImage(id, data);
+      const buffer = await data.toBuffer();
+      if (blog.imageUri){
+        try {
+          await this.uploadService.deleteImage(blog.imageUri);
+        } catch (err) {
+          this.logger.warn(
+            `Failed to delete old S3 object: ${(err as Error).message}`,
+          );
+        }
+      }
+      const imgUrl = await this.uploadService.uploadBlogImage(
+        buffer,
+        data.mimetype,
+        id
+      );
+      await this.blogRepository.update(id, { imageUri: imgUrl });
+      this.logger.log(`Image uploaded successfully: ${imgUrl}`);
       this.responsesService
         .code('success')
         .message('Blog image uploaded successfully')
-        .sendResponse(res, "wow");
+        .sendResponse(res, { imageUri: imgUrl });
     } catch (err) {
+      if (err instanceof Error) {
+        this.logger.error(`Failed to upload blog image: ${err.message}`);
+        return this.responsesService
+          .code('internalServerError')
+          .message(err.message)
+          .sendResponse(res, null);
+      }
       this.responsesService
         .code('internalServerError')
         .message('Failed to upload blog image')
@@ -79,7 +113,7 @@ export class UploadController {
 
       if (item.imageUri) {
         try {
-          await this.uploadService.deleteImage(item.id);
+          await this.uploadService.deleteImage(item.imageUri);
         } catch (err) {
           this.logger.warn(
             `Failed to delete old S3 object: ${(err as Error).message}`

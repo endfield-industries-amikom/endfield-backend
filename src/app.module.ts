@@ -31,6 +31,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { MaterialsModule } from './modules/material/materials.module';
 import { OrderItemModule } from './modules/order-item/order-item.module';
 import { ItemsModule } from './modules/item/items.module';
+import { BlogsModule } from './modules/blog/blogs.module';
 import { SessionMiddleware } from './common/middlewares/session.middleware';
 import { AdminModule } from './admin/admin.module';
 import { S3Module } from 'nestjs-s3';
@@ -62,6 +63,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     MaterialsModule,
     OrderItemModule,
     ItemsModule,
+    BlogsModule,
     AdminModule,
     ConfigModule.forRoot({
       envFilePath: ['.env.development.local', '.env.production.local', '.env'],
